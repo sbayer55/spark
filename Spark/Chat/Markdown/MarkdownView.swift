@@ -7,6 +7,7 @@ struct MarkdownView: View {
 
     var body: some View {
         MarkdownBlocksView(blocks: MarkdownParser.blocks(from: text))
+            .scaledFont(.body)
             .textSelection(.enabled)
     }
 }
@@ -34,8 +35,7 @@ private struct MarkdownBlockView: View {
                 .fixedSize(horizontal: false, vertical: true)
         case .heading(let level, let text):
             Text(text)
-                .font(Self.headingFont(level))
-                .bold()
+                .scaledFont(Self.headingStyle(level), weight: .bold)
                 .fixedSize(horizontal: false, vertical: true)
         case .codeBlock(let language, let code):
             CodeBlockView(language: language, code: code)
@@ -57,7 +57,7 @@ private struct MarkdownBlockView: View {
         }
     }
 
-    private static func headingFont(_ level: Int) -> Font {
+    private static func headingStyle(_ level: Int) -> Font.TextStyle {
         switch level {
         case 1: .title2
         case 2: .title3
@@ -76,11 +76,11 @@ private struct CodeBlockView: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
                 Text(language ?? "code")
-                    .font(.caption)
+                    .scaledFont(.caption)
                     .foregroundStyle(.secondary)
                 Spacer()
                 Button(copied ? "Copied" : "Copy", systemImage: copied ? "checkmark" : "doc.on.doc", action: copy)
-                    .font(.caption)
+                    .scaledFont(.caption)
                     .buttonStyle(.borderless)
             }
             .padding(.horizontal, 12)
@@ -89,7 +89,7 @@ private struct CodeBlockView: View {
 
             ScrollView(.horizontal) {
                 Text(code)
-                    .font(.system(.callout, design: .monospaced))
+                    .scaledFont(.callout, design: .monospaced)
                     .fixedSize()
                     .padding(.horizontal, 12)
                     .padding(.bottom, 10)

@@ -7,6 +7,7 @@ struct ChatView: View {
     var onHeightChange: (CGFloat) -> Void = { _ in }
 
     @State private var listContentHeight: CGFloat = 0
+    @AppStorage(TextSize.key) private var textScale = TextSize.defaultScale
 
     var body: some View {
         GlassEffectContainer(spacing: 10) {
@@ -20,6 +21,7 @@ struct ChatView: View {
                     .glassEffect(.regular, in: .rect(cornerRadius: 22, style: .continuous))
             }
         }
+        .environment(\.textScale, textScale)
         .padding(PanelMetrics.inset)
         .frame(width: PanelMetrics.width)
         .fixedSize(horizontal: false, vertical: true)

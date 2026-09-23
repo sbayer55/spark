@@ -43,4 +43,5 @@ Spark has no Dock icon. Look for the ✦ sparkle in the menu bar.
 - **Option+Space**: show/hide the chat panel (change it in Settings…)
 - **Return**: send; **Shift+Return**: newline
 - **Escape**: stop a streaming reply, or close the panel if nothing is streaming
+- **⌘=** / **⌘-**: larger / smaller text; **⌘0**: reset text size
 - The model picker at the bottom-left of the composer switches provider and model

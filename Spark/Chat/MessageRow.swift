@@ -32,11 +32,11 @@ struct MessageRow: View {
         switch message.status {
         case .cancelled:
             Label("Stopped", systemImage: "stop.circle")
-                .font(.caption)
+                .scaledFont(.caption)
                 .foregroundStyle(.secondary)
         case .failed(let reason):
             Label(reason, systemImage: "exclamationmark.triangle")
-                .font(.caption)
+                .scaledFont(.caption)
                 .foregroundStyle(.red)
         case .complete, .streaming:
             EmptyView()

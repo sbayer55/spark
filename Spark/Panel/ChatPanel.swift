@@ -4,6 +4,8 @@ import AppKit
 final class ChatPanel: NSPanel {
     /// Called when Escape is pressed. The owner decides whether to cancel a stream or close.
     var onEscape: (() -> Void)?
+    /// Called for ⌘= / ⌘+ (larger), ⌘- (smaller), and ⌘0 (reset).
+    var onTextSize: ((TextSize.Command) -> Void)?
 
     init(contentRect: NSRect) {
         super.init(
@@ -43,6 +45,21 @@ final class ChatPanel: NSPanel {
             return
         }
         super.sendEvent(event)
+    }
+
+    // Handled here rather than as menu commands: the panel is non-activating, so the
+    // app's main menu doesn't reliably receive key equivalents while the panel is key.
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        let modifiers = event.modifierFlags.intersection([.command, .option, .control])
+        if modifiers == .command, let onTextSize {
+            switch event.charactersIgnoringModifiers {
+            case "=", "+": onTextSize(.increase); return true
+            case "-": onTextSize(.decrease); return true
+            case "0": onTextSize(.reset); return true
+            default: break
+            }
+        }
+        return super.performKeyEquivalent(with: event)
     }
 
     override func cancelOperation(_ sender: Any?) {

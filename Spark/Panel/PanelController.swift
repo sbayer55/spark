@@ -18,6 +18,7 @@ final class PanelController {
         panel.contentView = hostingView
 
         panel.onEscape = { [weak self] in self?.handleEscape() }
+        panel.onTextSize = { TextSize.apply($0) }
     }
 
     var isVisible: Bool { panel.isVisible }
