@@ -6,6 +6,10 @@ struct MockProvider: LLMProvider {
     let displayName: String
     let models: [String]
 
+    func availableModels() async throws -> [String] {
+        models
+    }
+
     func stream(messages: [ChatMessage], model: String) -> AsyncThrowingStream<String, Error> {
         let response = cannedResponse(for: messages, model: model)
 

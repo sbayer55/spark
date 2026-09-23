@@ -13,7 +13,8 @@ Native macOS menu bar app for quick AI chats across multiple LLM providers (Olla
   Add files by placing them under `Spark/`; add settings, entitlements, Info.plist keys, and SPM packages in `project.yml`.
 - Dependencies via SPM declared in `project.yml`. Current: `sindresorhus/KeyboardShortcuts`.
 - App Sandbox is on (with outgoing network client). `LSUIElement` is on (no Dock icon).
-- Chat state is in memory only (no persistence yet).
+- Chat state is in memory only (no persistence yet). Settings (Ollama URL, last-picked model) live in `UserDefaults`.
+- ATS allows plain HTTP only to local hosts (`NSAllowsLocalNetworking`).
 
 ## Build
 ```bash
@@ -25,7 +26,8 @@ xcodegen generate && xcodebuild -scheme Spark -destination 'platform=macOS' buil
 - `Spark/App`: `@main` app (MenuBarExtra + Settings scenes), AppDelegate, hotkey names
 - `Spark/Panel`: `ChatPanel` (NSPanel subclass), `PanelController` (show/hide/position/resize), metrics
 - `Spark/Chat`: `ChatViewModel` and SwiftUI views
-- `Spark/Providers`: `LLMProvider` protocol, `MockProvider`, `ProviderRegistry` (TODOs mark where real clients go)
+- `Spark/Providers`: `LLMProvider` protocol, `OpenAICompatibleProvider` (SSE client; Ollama uses it via `Ollama.swift`),
+  `MockProvider` (Anthropic/Bifrost/9router until real clients land; see TODOs), `ProviderRegistry` (live model lists)
 - `Spark/Models`: `ChatMessage`
 - `Spark/Settings`: Settings window
 - `Spark/Resources`: assets; `Info.plist` and entitlements are generated from `project.yml`

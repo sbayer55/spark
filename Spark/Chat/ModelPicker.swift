@@ -4,18 +4,30 @@ import SwiftUI
 struct ModelPicker: View {
     @Bindable var model: ChatViewModel
 
+    private var registry: ProviderRegistry { model.registry }
+
     var body: some View {
         Menu {
-            ForEach(model.registry.providers, id: \.id) { provider in
+            ForEach(registry.providers, id: \.id) { provider in
                 Section(provider.displayName) {
-                    ForEach(provider.models, id: \.self) { name in
+                    let names = registry.models(for: provider.id)
+                    if let error = registry.errors[provider.id] {
+                        Text(error)
+                    } else if names.isEmpty {
+                        Text(registry.isRefreshing ? "Loading…" : "No models available")
+                    }
+                    ForEach(names, id: \.self) { name in
                         let option = ModelSelection(providerID: provider.id, model: name)
                         Toggle(name, isOn: Binding(
                             get: { model.selection == option },
-                            set: { if $0 { model.selection = option } }
+                            set: { if $0 { model.select(option) } }
                         ))
                     }
                 }
+            }
+            Divider()
+            Button("Refresh Models", systemImage: "arrow.clockwise") {
+                Task { await model.refreshModels() }
             }
         } label: {
             Label(title, systemImage: "sparkle")
@@ -28,8 +40,10 @@ struct ModelPicker: View {
     }
 
     private var title: String {
-        guard let selection = model.selection else { return "No model" }
-        let providerName = model.registry.provider(id: selection.providerID)?.displayName ?? selection.providerID
+        guard let selection = model.selection else {
+            return registry.isRefreshing ? "Loading models…" : "Choose a model"
+        }
+        let providerName = registry.provider(id: selection.providerID)?.displayName ?? selection.providerID
         return "\(providerName) / \(selection.model)"
     }
 }

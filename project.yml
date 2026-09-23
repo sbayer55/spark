@@ -36,6 +36,9 @@ targets:
         CFBundleVersion: "1"
         LSApplicationCategoryType: public.app-category.productivity
         LSUIElement: true
+        # Allow plain-HTTP connections to local servers (Ollama on localhost / .local hosts).
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
         NSHumanReadableCopyright: ""
     entitlements:
       path: Spark/Resources/Spark.entitlements

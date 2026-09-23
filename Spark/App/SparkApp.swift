@@ -5,8 +5,10 @@ struct SparkApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     var body: some Scene {
-        MenuBarExtra("Spark", systemImage: "sparkle") {
+        MenuBarExtra {
             SparkMenu(panelController: appDelegate.panelController)
+        } label: {
+            StatusItemLabel(registry: appDelegate.panelController.viewModel.registry)
         }
 
         Settings {
@@ -15,11 +17,35 @@ struct SparkApp: App {
     }
 }
 
+/// The menu bar icon; badged while any provider is unavailable.
+private struct StatusItemLabel: View {
+    let registry: ProviderRegistry
+
+    var body: some View {
+        Image(nsImage: registry.unavailableProviders.isEmpty ? StatusIcon.normal : StatusIcon.degraded)
+    }
+}
+
 private struct SparkMenu: View {
     let panelController: PanelController
     @Environment(\.openSettings) private var openSettings
 
+    private var registry: ProviderRegistry { panelController.viewModel.registry }
+
     var body: some View {
+        if !registry.unavailableProviders.isEmpty {
+            Section("Unavailable") {
+                ForEach(registry.unavailableProviders, id: \.id) { provider in
+                    Label(registry.errors[provider.id] ?? "\(provider.displayName) is unavailable",
+                          systemImage: "exclamationmark.triangle")
+                }
+                Button("Check Again") {
+                    Task { await panelController.viewModel.refreshModels() }
+                }
+            }
+            Divider()
+        }
+
         Button("New Chat") {
             panelController.viewModel.newChat()
             panelController.show()

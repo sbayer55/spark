@@ -8,7 +8,7 @@ final class ChatViewModel {
 
     var messages: [ChatMessage] = []
     var draft = ""
-    var selection: ModelSelection?
+    private(set) var selection: ModelSelection?
 
     /// Incremented to ask the input field to take focus (e.g. when the panel opens).
     private(set) var focusRequest = 0
@@ -23,9 +23,41 @@ final class ChatViewModel {
         !isStreaming && selection != nil && !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
-    init(registry: ProviderRegistry = .standard) {
+    /// The model the user last picked explicitly; restored whenever it's available.
+    @ObservationIgnored private var preferredSelection: ModelSelection? {
+        get {
+            let defaults = UserDefaults.standard
+            guard let provider = defaults.string(forKey: Self.providerKey),
+                  let model = defaults.string(forKey: Self.modelKey) else { return nil }
+            return ModelSelection(providerID: provider, model: model)
+        }
+        set {
+            UserDefaults.standard.set(newValue?.providerID, forKey: Self.providerKey)
+            UserDefaults.standard.set(newValue?.model, forKey: Self.modelKey)
+        }
+    }
+
+    private static let providerKey = "selectedProviderID"
+    private static let modelKey = "selectedModel"
+
+    init(registry: ProviderRegistry = ProviderRegistry()) {
         self.registry = registry
-        self.selection = registry.defaultSelection
+        self.selection = preferredSelection
+    }
+
+    func select(_ selection: ModelSelection) {
+        self.selection = selection
+        preferredSelection = selection
+    }
+
+    /// Reloads provider model lists, then restores the preferred model or falls back to a default.
+    func refreshModels() async {
+        await registry.refresh()
+        if let preferred = preferredSelection, registry.contains(preferred) {
+            selection = preferred
+        } else if preferredSelection == nil || !(selection.map(registry.contains) ?? false) {
+            selection = registry.defaultSelection
+        }
     }
 
     func send() {
@@ -52,6 +84,8 @@ final class ChatViewModel {
                 self?.finish(reply.id, status: .cancelled)
             } catch {
                 self?.finish(reply.id, status: .failed(error.localizedDescription))
+                // The provider may have gone away; update availability (and the menu bar icon) now.
+                await self?.refreshModels()
             }
         }
     }

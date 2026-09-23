@@ -2,7 +2,17 @@
 
 A macOS menu bar app for quick AI chats across multiple LLM providers. Press **Option+Space** anywhere to open a floating Liquid Glass chat panel.
 
-> Status: scaffolding. Providers are mocked and stream canned responses; there are no network calls yet.
+> Status: early. **Ollama** is live; Anthropic, Bifrost, and 9router are still mocked.
+
+## Ollama
+Install and start [Ollama](https://ollama.com), then pull a model:
+```bash
+ollama serve
+```
+```bash
+ollama pull llama3.2
+```
+Spark lists your installed models under **Ollama** in the model picker. The server URL defaults to `http://localhost:11434` and can be changed in Settings….
 
 ## Requirements
 - macOS 26 (Tahoe) or later

@@ -36,6 +36,8 @@ final class PanelController {
         }
         panel.makeKeyAndOrderFront(nil)
         viewModel.requestFocus()
+        // Cheap local call; picks up models pulled or servers started since last open.
+        Task { await viewModel.refreshModels() }
     }
 
     func hide() {
