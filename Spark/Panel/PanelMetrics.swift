@@ -1,10 +1,12 @@
 import CoreGraphics
 
 enum PanelMetrics {
-    /// Total panel width, including the transparent inset around the glass.
+    /// Default panel width, including the transparent inset around the glass.
     static let width: CGFloat = 680
+    /// Smallest size the user can resize the panel to.
+    static let minSize = CGSize(width: 420, height: 120)
     /// Transparent margin so glass edges and shadows aren't clipped by the window.
     static let inset: CGFloat = 12
-    /// The message list scrolls once its content exceeds this height.
+    /// While the panel sizes itself to its content, the message list scrolls once it exceeds this height.
     static let maxListHeight: CGFloat = 460
 }

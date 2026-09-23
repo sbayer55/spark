@@ -52,6 +52,11 @@ private struct SparkMenu: View {
         }
         .keyboardShortcut("n")
 
+        Button("Reset Panel Size") {
+            panelController.resetSize()
+        }
+        .disabled(!panelController.layout.isCustomized)
+
         Button("Settings…") {
             // Menu bar (LSUIElement) apps must activate first or the window opens behind other apps.
             NSApp.activate()

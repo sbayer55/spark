@@ -16,6 +16,7 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
+        .writingToolsBehavior(.disabled)
         .frame(width: 420)
         .fixedSize()
     }

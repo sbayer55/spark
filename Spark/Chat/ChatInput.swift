@@ -32,8 +32,6 @@ struct ChatInput: View {
                 TextEditor(text: $model.draft)
                     .scrollContentBackground(.hidden)
                     .scrollIndicators(.never)
-                    // Hide the floating Writing Tools button; Writing Tools stays in the context and Edit menus.
-                    .writingToolsAffordanceVisibility(.hidden)
                     .focused($isFocused)
                     .onKeyPress(.return, phases: .down) { press in
                         guard !press.modifiers.contains(.shift) else { return .ignored }

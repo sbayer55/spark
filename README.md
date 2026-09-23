@@ -45,3 +45,5 @@ Spark has no Dock icon. Look for the ✦ sparkle in the menu bar.
 - **Escape**: stop a streaming reply, or close the panel if nothing is streaming
 - **⌘=** / **⌘-**: larger / smaller text; **⌘0**: reset text size
 - The model picker at the bottom-left of the composer switches provider and model
+- Drag the panel's edges to resize it. It grows with the conversation until you change its height;
+  after that it keeps your height. **Reset Panel Size** in the ✦ menu restores the default.

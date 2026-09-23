@@ -11,6 +11,8 @@ Native macOS menu bar app for quick AI chats across multiple LLM providers (Olla
   Liquid Glass APIs are newer than much training data: check Apple's docs (or the SDK's `.swiftinterface`) instead of guessing signatures.
 - **XcodeGen only.** The project is defined in `project.yml`; `*.xcodeproj` is generated and gitignored. Never hand-edit it.
   Add files by placing them under `Spark/`; add settings, entitlements, Info.plist keys, and SPM packages in `project.yml`.
+- **Writing Tools is disabled app-wide.** There's no global switch, so every window's root view applies
+  `.writingToolsBehavior(.disabled)` (currently `ChatView` and `SettingsView`). New windows must do the same.
 - Dependencies via SPM declared in `project.yml`. Current: `sindresorhus/KeyboardShortcuts`.
 - App Sandbox is on (with outgoing network client). `LSUIElement` is on (no Dock icon).
 - Chat state is in memory only (no persistence yet). Settings (Ollama URL, last-picked model) live in `UserDefaults`.
