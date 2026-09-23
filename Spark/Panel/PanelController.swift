@@ -8,6 +8,9 @@ final class PanelController {
     let layout: PanelLayout
     private let panel: ChatPanel
 
+    /// When the panel was last hidden; `nil` while it's showing. Continuous clock, so time asleep counts.
+    private var hiddenAt: ContinuousClock.Instant?
+
     /// The in-progress user resize: which edge or corner, and the frame and mouse location it started from.
     private var resizeStart: (position: NSCursor.FrameResizePosition, frame: NSRect, mouse: NSPoint)?
 
@@ -50,8 +53,10 @@ final class PanelController {
 
     func show() {
         if !panel.isVisible {
+            startNewChatIfExpired()
             position(on: activeScreen())
         }
+        hiddenAt = nil
         panel.makeKeyAndOrderFront(nil)
         viewModel.requestFocus()
         // Cheap local call; picks up models pulled or servers started since last open.
@@ -60,6 +65,16 @@ final class PanelController {
 
     func hide() {
         panel.orderOut(nil)
+        hiddenAt = .now
+    }
+
+    /// Starts a new chat if the panel has been closed longer than the retention setting allows.
+    /// A reply still streaming in the background is left alone.
+    private func startNewChatIfExpired() {
+        guard let hiddenAt, !viewModel.isStreaming,
+              ChatRetention.hasExpired(closedFor: hiddenAt.duration(to: .now))
+        else { return }
+        viewModel.newChat()
     }
 
     /// Returns to the default width and content-driven height.

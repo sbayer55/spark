@@ -15,7 +15,9 @@ Native macOS menu bar app for quick AI chats across multiple LLM providers (Olla
   `.writingToolsBehavior(.disabled)` (currently `ChatView` and `SettingsView`). New windows must do the same.
 - Dependencies via SPM declared in `project.yml`. Current: `sindresorhus/KeyboardShortcuts`.
 - App Sandbox is on (with outgoing network client). `LSUIElement` is on (no Dock icon).
-- Chat state is in memory only (no persistence yet). Settings (Ollama URL, last-picked model) live in `UserDefaults`.
+- Chat state is in memory only (no persistence yet). A closed panel keeps its chat for the "Keep chat after closing"
+  setting (`ChatRetention`, default 5 minutes); reopening after that starts a new chat.
+  Settings (Ollama URL, last-picked model, retention, panel size, text size) live in `UserDefaults`.
 - ATS allows plain HTTP only to local hosts (`NSAllowsLocalNetworking`).
 
 ## Build
