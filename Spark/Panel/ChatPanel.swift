@@ -6,6 +6,10 @@ final class ChatPanel: NSPanel {
     var onEscape: (() -> Void)?
     /// Called for ⌘= / ⌘+ (larger), ⌘- (smaller), and ⌘0 (reset).
     var onTextSize: ((TextSize.Command) -> Void)?
+    /// Offered every key-down and modifier change before normal handling; returns whether it consumed the event.
+    var onKeyEvent: ((NSEvent) -> Bool)?
+    /// Called when the panel stops being the key window.
+    var onResignKey: (() -> Void)?
 
     init(contentRect: NSRect) {
         super.init(
@@ -37,6 +41,9 @@ final class ChatPanel: NSPanel {
     override var canBecomeMain: Bool { false }
 
     override func sendEvent(_ event: NSEvent) {
+        if event.type == .keyDown || event.type == .flagsChanged, onKeyEvent?(event) == true {
+            return
+        }
         // Intercept Escape before the text view turns it into autocomplete,
         // unless an input method is mid-composition and needs it.
         if event.type == .keyDown, event.keyCode == 53, event.modifierFlags.intersection(.deviceIndependentFlagsMask).isEmpty,
@@ -50,6 +57,9 @@ final class ChatPanel: NSPanel {
     // Handled here rather than as menu commands: the panel is non-activating, so the
     // app's main menu doesn't reliably receive key equivalents while the panel is key.
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        if onKeyEvent?(event) == true {
+            return true
+        }
         let modifiers = event.modifierFlags.intersection([.command, .option, .control])
         if modifiers == .command, let onTextSize {
             switch event.charactersIgnoringModifiers {
@@ -60,6 +70,11 @@ final class ChatPanel: NSPanel {
             }
         }
         return super.performKeyEquivalent(with: event)
+    }
+
+    override func resignKey() {
+        super.resignKey()
+        onResignKey?()
     }
 
     override func cancelOperation(_ sender: Any?) {
