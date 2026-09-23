@@ -12,3 +12,7 @@ build/
 # SwiftPM
 .build/
 .swiftpm/
+
+# CI
+.spm/
+build.log

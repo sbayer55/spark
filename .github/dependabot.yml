@@ -1,0 +1,10 @@
+version: 2
+updates:
+  # SPM dependencies are declared in project.yml (XcodeGen), which Dependabot can't read.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]

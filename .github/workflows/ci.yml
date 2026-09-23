@@ -1,0 +1,91 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  secrets:
+    name: Secret scan (TruffleHog)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Scans only the commits in this push/PR; fails on verified or unknown-status secrets.
+      - uses: trufflesecurity/trufflehog@v3.97.6
+        with:
+          extra_args: --results=verified,unknown
+
+  build:
+    name: Build (Debug & Release)
+    runs-on: macos-26
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        configuration: [Debug, Release]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Cache Swift packages
+        uses: actions/cache@v4
+        with:
+          path: .spm
+          key: spm-${{ runner.os }}-${{ hashFiles('project.yml') }}
+          restore-keys: spm-${{ runner.os }}-
+
+      - name: Build
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project Spark.xcodeproj \
+            -scheme Spark \
+            -configuration ${{ matrix.configuration }} \
+            -destination 'platform=macOS' \
+            -derivedDataPath DerivedData \
+            -clonedSourcePackagesDirPath .spm \
+            CODE_SIGNING_ALLOWED=NO \
+            | tee build.log
+
+      # The project allows no warnings (see CLAUDE.md). Package targets build with
+      # warnings suppressed, so any compiler/build-system warning left is ours.
+      # (SWIFT_TREAT_WARNINGS_AS_ERRORS can't be set globally: it conflicts with the
+      # packages' -suppress-warnings.)
+      - name: Fail on warnings
+        run: |
+          if grep -E '^(/[^:]+:[0-9]+:[0-9]+: )?warning: ' build.log | sort -u | tee warnings.txt | grep -q .; then
+            while IFS= read -r line; do
+              echo "::warning::${line}"
+            done < warnings.txt
+            echo "::error::Build produced $(wc -l < warnings.txt | tr -d ' ') warning(s)."
+            exit 1
+          fi
+
+      - name: Upload build log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log-${{ matrix.configuration }}
+          path: build.log

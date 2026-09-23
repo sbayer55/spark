@@ -1,0 +1,74 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Archive & publish
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      # Ad-hoc signed (CODE_SIGN_IDENTITY "-" in project.yml), which is what embeds the
+      # sandbox entitlements. Not notarized: users must right-click > Open on first launch.
+      - name: Archive
+        run: |
+          set -o pipefail
+          xcodebuild archive \
+            -project Spark.xcodeproj \
+            -scheme Spark \
+            -destination 'generic/platform=macOS' \
+            -derivedDataPath DerivedData \
+            -archivePath build/Spark.xcarchive
+
+      - name: Check version matches tag
+        id: version
+        run: |
+          plist=build/Spark.xcarchive/Products/Applications/Spark.app/Contents/Info.plist
+          version=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$plist")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if [[ "$GITHUB_REF_TYPE" == "tag" && "$GITHUB_REF_NAME" != "v$version" ]]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match CFBundleShortVersionString $version in project.yml."
+            exit 1
+          fi
+
+      - name: Package
+        run: |
+          ditto -c -k --sequesterRsrc --keepParent \
+            build/Spark.xcarchive/Products/Applications/Spark.app \
+            "build/Spark-${{ steps.version.outputs.version }}.zip"
+          shasum -a 256 build/Spark-*.zip | tee build/SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Spark-${{ steps.version.outputs.version }}
+          path: |
+            build/Spark-*.zip
+            build/SHA256SUMS.txt
+
+      - name: Create GitHub release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            build/Spark-*.zip build/SHA256SUMS.txt \
+            --title "Spark ${{ steps.version.outputs.version }}" \
+            --generate-notes
