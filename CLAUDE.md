@@ -26,6 +26,8 @@ xcodegen generate && xcodebuild -scheme Spark -destination 'platform=macOS' buil
 - `Spark/App`: `@main` app (MenuBarExtra + Settings scenes), AppDelegate, hotkey names
 - `Spark/Panel`: `ChatPanel` (NSPanel subclass), `PanelController` (show/hide/position/resize), metrics
 - `Spark/Chat`: `ChatViewModel` and SwiftUI views
+- `Spark/Chat/Markdown`: markdown parsing (`MarkdownParser`, swift-markdown) and rendering (`MarkdownView`).
+  Only `MarkdownParser.swift` may `import Markdown`; its `Text`/`Link`/`Image`/`Table` types clash with SwiftUI.
 - `Spark/Providers`: `LLMProvider` protocol, `OpenAICompatibleProvider` (SSE client; Ollama uses it via `Ollama.swift`),
   `MockProvider` (Anthropic/Bifrost/9router until real clients land; see TODOs), `ProviderRegistry` (live model lists)
 - `Spark/Models`: `ChatMessage`

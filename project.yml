@@ -19,6 +19,9 @@ packages:
   KeyboardShortcuts:
     url: https://github.com/sindresorhus/KeyboardShortcuts
     from: "2.3.0"
+  Markdown:
+    url: https://github.com/swiftlang/swift-markdown
+    from: "0.9.0"
 
 targets:
   Spark:
@@ -28,6 +31,8 @@ targets:
       - path: Spark
     dependencies:
       - package: KeyboardShortcuts
+      - package: Markdown
+        product: Markdown
     info:
       path: Spark/Resources/Info.plist
       properties:

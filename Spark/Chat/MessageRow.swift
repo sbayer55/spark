@@ -8,8 +8,7 @@ struct MessageRow: View {
         case .user:
             HStack {
                 Spacer(minLength: 60)
-                Text(message.content)
-                    .textSelection(.enabled)
+                MarkdownView(text: message.content)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
                     .background(.tint.opacity(0.18), in: .rect(cornerRadius: 14, style: .continuous))
@@ -20,8 +19,7 @@ struct MessageRow: View {
                     ProgressView()
                         .controlSize(.small)
                 } else {
-                    Text(message.content)
-                        .textSelection(.enabled)
+                    MarkdownView(text: message.content)
                 }
                 statusLabel
             }

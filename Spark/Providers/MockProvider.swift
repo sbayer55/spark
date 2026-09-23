@@ -35,6 +35,28 @@ struct MockProvider: LLMProvider {
         let responses = [
             "You said: “\(lastUserMessage)”. The plumbing works — this reply came from \(displayName) / \(model), streamed one token at a time.",
             "This is a mocked response from \(displayName). Real network calls aren't wired up yet, but streaming, cancellation, and auto-scroll are all live. Try pressing Escape mid-sentence to stop me.",
+            """
+            ## Markdown check
+            Here's a **quick tour** of what Spark renders, with `inline code`, *emphasis*, and a [link](https://www.apple.com).
+
+            - A bulleted item
+            - Another one, with ~~struck~~ text
+              1. A nested numbered item
+              2. And a second
+            - [x] A finished task
+            - [ ] An open task
+
+            ```swift
+            let provider = "\(displayName)"
+            print("Streaming from \\(provider) / \(model)")
+            ```
+
+            | Provider | Model | Streams |
+            | --- | --- | --- |
+            | \(displayName) | \(model) | yes |
+
+            > Mocked text, real renderer.
+            """,
             "Here's a longer canned answer so you can watch the panel grow. Spark is a menu bar app for quick AI chats across several providers. Once real clients land, this text will be replaced by actual model output. Until then, enjoy these carefully chosen placeholder words, delivered with a small random delay between each one to mimic a real model. Keep sending messages and the panel will eventually hit its maximum height and start scrolling instead.",
         ]
         return responses.randomElement() ?? responses[0]
