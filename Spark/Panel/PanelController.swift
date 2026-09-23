@@ -1,10 +1,10 @@
 import AppKit
 import SwiftUI
 
-/// Owns the chat panel and its view model, and handles show/hide/positioning/sizing.
+/// Owns the chat panel and its chats, and handles show/hide/positioning/sizing.
 @MainActor
 final class PanelController {
-    let viewModel: ChatViewModel
+    let store: ChatStore
     let layout: PanelLayout
     private let panel: ChatPanel
 
@@ -14,12 +14,12 @@ final class PanelController {
     /// The in-progress user resize: which edge or corner, and the frame and mouse location it started from.
     private var resizeStart: (position: NSCursor.FrameResizePosition, frame: NSRect, mouse: NSPoint)?
 
-    init(viewModel: ChatViewModel = ChatViewModel(), layout: PanelLayout = PanelLayout()) {
-        self.viewModel = viewModel
+    init(store: ChatStore = ChatStore(), layout: PanelLayout = PanelLayout()) {
+        self.store = store
         self.layout = layout
         panel = ChatPanel(contentRect: NSRect(x: 0, y: 0, width: layout.width, height: layout.fixedHeight ?? 120))
 
-        let hostingView = NSHostingView(rootView: ChatView(model: viewModel, layout: layout) { [weak self] height in
+        let hostingView = NSHostingView(rootView: ChatView(store: store, layout: layout) { [weak self] height in
             self?.resize(toContentHeight: height)
         })
         hostingView.sizingOptions = []
@@ -39,6 +39,9 @@ final class PanelController {
 
         panel.onEscape = { [weak self] in self?.handleEscape() }
         panel.onTextSize = { TextSize.apply($0) }
+        panel.onKeyEvent = { [weak self] event in self?.handleKey(event) ?? false }
+        // ⌃ can be released elsewhere once the panel loses focus, so a switcher left open would get stuck.
+        panel.onResignKey = { [weak self] in self?.store.cancelSwitcher() }
     }
 
     var isVisible: Bool { panel.isVisible }
@@ -58,23 +61,22 @@ final class PanelController {
         }
         hiddenAt = nil
         panel.makeKeyAndOrderFront(nil)
-        viewModel.requestFocus()
+        store.requestFocus()
         // Cheap local call; picks up models pulled or servers started since last open.
-        Task { await viewModel.refreshModels() }
+        Task { await store.refreshModels() }
     }
 
     func hide() {
+        store.cancelSwitcher()
         panel.orderOut(nil)
         hiddenAt = .now
     }
 
-    /// Starts a new chat if the panel has been closed longer than the retention setting allows.
-    /// A reply still streaming in the background is left alone.
+    /// Drops the chats and starts a new one if the panel has been closed longer than the retention setting allows.
+    /// Chats still streaming a reply are left alone.
     private func startNewChatIfExpired() {
-        guard let hiddenAt, !viewModel.isStreaming,
-              ChatRetention.hasExpired(closedFor: hiddenAt.duration(to: .now))
-        else { return }
-        viewModel.newChat()
+        guard let hiddenAt, ChatRetention.hasExpired(closedFor: hiddenAt.duration(to: .now)) else { return }
+        store.discardIdleChats()
     }
 
     /// Returns to the default width and content-driven height.
@@ -88,9 +90,50 @@ final class PanelController {
     }
 
     private func handleEscape() {
-        if !viewModel.cancelStreaming() {
+        if !store.active.cancelStreaming() {
             hide()
         }
+    }
+
+    // MARK: - Chat keys
+
+    /// ⌘N / ⌘W, and the ⌃Tab switcher: hold ⌃ and press Tab (⇧Tab backward) to move, release ⌃ to switch.
+    /// While the switcher is open it takes every key: arrows move, Return switches, Escape cancels.
+    private func handleKey(_ event: NSEvent) -> Bool {
+        let modifiers = event.modifierFlags.intersection([.command, .option, .control, .shift])
+
+        if event.type == .flagsChanged {
+            if store.isSwitcherOpen && !modifiers.contains(.control) {
+                store.commitSwitcher()
+            }
+            return false
+        }
+        guard event.type == .keyDown else { return false }
+
+        if event.keyCode == KeyCode.tab, modifiers.contains(.control) {
+            store.cycleSwitcher(backward: modifiers.contains(.shift))
+            return true
+        }
+
+        if store.isSwitcherOpen {
+            switch event.keyCode {
+            case KeyCode.upArrow: store.moveSwitcherHighlight(by: -1)
+            case KeyCode.downArrow: store.moveSwitcherHighlight(by: 1)
+            case KeyCode.return, KeyCode.keypadEnter: store.commitSwitcher()
+            case KeyCode.escape: store.cancelSwitcher()
+            default: break
+            }
+            return true
+        }
+
+        if modifiers == .command {
+            switch event.charactersIgnoringModifiers {
+            case "n": store.newChat(); return true
+            case "w": store.closeActiveChat(); return true
+            default: break
+            }
+        }
+        return false
     }
 
     // MARK: - Layout
@@ -167,4 +210,13 @@ final class PanelController {
         let mouse = NSEvent.mouseLocation
         return NSScreen.screens.first { NSMouseInRect(mouse, $0.frame, false) } ?? NSScreen.main
     }
+}
+
+private enum KeyCode {
+    static let tab: UInt16 = 48
+    static let `return`: UInt16 = 36
+    static let keypadEnter: UInt16 = 76
+    static let escape: UInt16 = 53
+    static let upArrow: UInt16 = 126
+    static let downArrow: UInt16 = 125
 }
