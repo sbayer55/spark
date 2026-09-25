@@ -139,6 +139,8 @@ final class ChatViewModel: Identifiable {
         streamingMessageID = reply.id
         let apiKey = braveKey.value
         let systemPrompt = SystemPrompt.current()
+        // Read the mode now: switching modes mid-stream must not change the in-flight request.
+        let instructions = [systemPrompt, effectiveMode.instructions].compactMap(\.self)
 
         streamTask = Task { [weak self] in
             do {
@@ -150,7 +152,9 @@ final class ChatViewModel: Identifiable {
                         self?.apply(event, to: reply.id)
                     }
                 } else {
-                    let messages = (systemPrompt.map { [ChatMessage(role: .system, content: $0)] } ?? []) + history
+                    let system = instructions.isEmpty
+                        ? [] : [ChatMessage(role: .system, content: instructions.joined(separator: "\n\n"))]
+                    let messages = system + history
                     for try await chunk in provider.stream(messages: messages, model: selection.model) {
                         self?.append(chunk, to: reply.id)
                     }

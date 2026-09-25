@@ -35,7 +35,7 @@ Status keys: `idea` (unvetted), `next` (agreed, not started), `wip` (in progress
 | Feature | Status | Notes |
 | --- | --- | --- |
 | File and PDF attachments | idea | Sandbox-friendly via the file picker already used for provider imports. |
-| Prompt library / snippets | idea | Slash commands in the composer (`/translate`, `/tldr`) expand to saved prompts editable in Settings. |
+| Prompt library / snippets | idea | Slash commands in the composer (`/translate`, `/eli5`) expand to saved prompts editable in Settings. |
 | Token and cost meter | idea | Show usage per reply from provider usage fields (Anthropic and Bedrock return them). |
 | Voice input | idea | On-device speech recognition; natural for a hotkey-summoned panel. |
 
@@ -77,3 +77,4 @@ Status keys: `idea` (unvetted), `next` (agreed, not started), `wip` (in progress
 | Anthropic and Bedrock native providers | 130b65f |
 | System prompt setting | 7a5da8b |
 | Cursor-style mode picker | 2e2825a |
+| TL;DR mode (terse answers) | this branch |
