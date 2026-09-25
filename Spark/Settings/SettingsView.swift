@@ -121,7 +121,7 @@ private struct GeneralSettingsView: View {
             } header: {
                 Text("System prompt")
             } footer: {
-                Text("Sent to the model at the start of every chat, with any provider. In Research mode it shapes the final answer. Leave empty for none.")
+                Text("Sent to the model at the start of every chat, with any provider. In TL;DR mode a brevity instruction is added after it; in Research mode it shapes the final answer. Leave empty for none.")
                     .foregroundStyle(.secondary)
             }
         }

@@ -41,9 +41,11 @@ Native macOS menu bar app for quick AI chats across multiple LLM providers (Olla
   `.credentials.yaml`, `.env`), or 9router (`~/.9router`: SQLite `db/data.sqlite` or legacy `db.json`).
   The sandbox means the user picks the file/folder; configs go in `UserDefaults`, API keys in the Keychain.
   Anthropic-protocol entries are skipped (the importer only creates OpenAI-compatible providers).
-- **Chat modes** (`ChatMode`): a Cursor-style mode picker leads the composer row (⇧Tab cycles); Ask (default) is a plain
-  reply. **Research mode** runs `ResearchAgent` on top of the plain text-streaming provider interface:
-  plan queries (prompt-and-parse JSON) → Brave Search → read pages → optional follow-up round → cited answer.
+- **Chat modes** (`ChatMode`): a Cursor-style mode picker leads the composer row (⇧Tab cycles in declaration order:
+  Ask → TL;DR → Research); Ask (default) is a plain reply. **TL;DR mode** is the same plain reply with the mode's
+  `instructions` (a brevity prompt) appended after the user's system prompt. **Research mode** runs `ResearchAgent`
+  on top of the plain text-streaming provider interface: plan queries (prompt-and-parse JSON) → Brave Search →
+  read pages → optional follow-up round → cited answer.
   Progress is reported as `ResearchEvent`s into the assistant `ChatMessage.research` state. No tool calling is used.
 - ATS allows plain HTTP only to local hosts (`NSAllowsLocalNetworking`).
 
