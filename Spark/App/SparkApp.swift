@@ -12,7 +12,7 @@ struct SparkApp: App {
         }
 
         Settings {
-            SettingsView(braveKey: appDelegate.panelController.store.braveKey)
+            SettingsView(store: appDelegate.panelController.store)
         }
     }
 }

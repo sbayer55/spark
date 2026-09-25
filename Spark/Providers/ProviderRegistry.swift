@@ -5,7 +5,17 @@ import Observation
 @MainActor
 @Observable
 final class ProviderRegistry {
-    let providers: [any LLMProvider]
+    /// Built-in providers, followed by the user's custom ones.
+    var providers: [any LLMProvider] {
+        let custom = customProviders.providers
+        // An imported 9router config supersedes its placeholder.
+        let hasNineRouter = customProviders.configs.contains { $0.source == .nineRouter }
+        let builtIn = builtInProviders.filter { !(hasNineRouter && $0.id == "9router") }
+        return builtIn + custom
+    }
+
+    private let builtInProviders: [any LLMProvider]
+    let customProviders: CustomProviders
 
     /// Models by provider ID, from the last refresh.
     private(set) var models: [String: [String]] = [:]
@@ -13,8 +23,10 @@ final class ProviderRegistry {
     private(set) var errors: [String: String] = [:]
     private(set) var isRefreshing = false
 
-    init(providers: [any LLMProvider] = ProviderRegistry.standardProviders) {
-        self.providers = providers
+    init(providers: [any LLMProvider] = ProviderRegistry.standardProviders,
+         customProviders: CustomProviders = CustomProviders()) {
+        self.builtInProviders = providers
+        self.customProviders = customProviders
     }
 
     /// Providers whose last refresh failed (e.g. Ollama isn't running).
@@ -49,6 +61,12 @@ final class ProviderRegistry {
         guard !isRefreshing else { return }
         isRefreshing = true
         defer { isRefreshing = false }
+
+        let providers = self.providers
+        // Forget providers that were removed since the last refresh.
+        let ids = Set(providers.map(\.id))
+        models = models.filter { ids.contains($0.key) }
+        errors = errors.filter { ids.contains($0.key) }
 
         await withTaskGroup(of: (String, Result<[String], any Error>).self) { group in
             for provider in providers {

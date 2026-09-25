@@ -2,14 +2,14 @@ import KeyboardShortcuts
 import SwiftUI
 
 struct SettingsView: View {
-    let braveKey: BraveSearchKey
+    let store: ChatStore
     @AppStorage(Theme.key) private var themeID = Theme.systemID
 
     var body: some View {
         let theme = Theme.named(themeID)
         TabView {
             Tab("General", systemImage: "gearshape") {
-                GeneralSettingsView(braveKey: braveKey)
+                GeneralSettingsView(store: store)
             }
             Tab("Appearance", systemImage: "paintpalette") {
                 ThemePicker()
@@ -24,7 +24,7 @@ struct SettingsView: View {
 }
 
 private struct GeneralSettingsView: View {
-    @Bindable var braveKey: BraveSearchKey
+    let store: ChatStore
     @AppStorage(Ollama.baseURLKey) private var ollamaURL = Ollama.defaultBaseURL
     @AppStorage(ChatRetention.key) private var retentionMinutes = ChatRetention.defaultMinutes
     @Environment(\.theme) private var theme
@@ -49,7 +49,9 @@ private struct GeneralSettingsView: View {
                     .textContentType(.URL)
                     .autocorrectionDisabled()
             }
+            CustomProvidersSection(store: store)
             Section {
+                @Bindable var braveKey = store.braveKey
                 SecureField("Brave Search API key", text: $braveKey.key)
                     .textContentType(.password)
                     .autocorrectionDisabled()
