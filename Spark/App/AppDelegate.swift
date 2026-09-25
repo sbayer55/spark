@@ -28,7 +28,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         availabilityTask?.cancel()
         availabilityTask = Task { [weak self] in
             while !Task.isCancelled {
-                await self?.panelController.viewModel.refreshModels()
+                await self?.panelController.store.refreshModels()
                 try? await Task.sleep(for: Self.availabilityInterval)
             }
         }

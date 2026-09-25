@@ -16,8 +16,9 @@ Native macOS menu bar app for quick AI chats across multiple LLM providers (Olla
 - Dependencies via SPM declared in `project.yml`. Current: `sindresorhus/KeyboardShortcuts`, `swiftlang/swift-markdown`,
   `scinfu/SwiftSoup` (only `Spark/Research/PageReader.swift` may `import SwiftSoup`).
 - App Sandbox is on (with outgoing network client). `LSUIElement` is on (no Dock icon).
-- Chat state is in memory only (no persistence yet). A closed panel keeps its chat for the "Keep chat after closing"
-  setting (`ChatRetention`, default 5 minutes); reopening after that starts a new chat.
+- Chat state is in memory only (no persistence yet). Several chats can be open at once (⌘N new, ⌘W close,
+  ⌃Tab switcher); a background chat keeps streaming. A closed panel keeps its chats for the "Keep chat after closing"
+  setting (`ChatRetention`, default 5 minutes); reopening after that drops every chat not mid-reply and starts a new one.
   Settings (Ollama URL, last-picked model, retention, panel size, text size) live in `UserDefaults`.
   The Brave Search API key lives in the Keychain (`Keychain.swift`, mirrored by `BraveSearchKey`), never in `UserDefaults`.
 - **Research mode** (composer toggle) runs `ResearchAgent` on top of the plain text-streaming provider interface:
@@ -34,7 +35,8 @@ xcodegen generate && xcodebuild -scheme Spark -destination 'platform=macOS' buil
 ## Layout
 - `Spark/App`: `@main` app (MenuBarExtra + Settings scenes), AppDelegate, hotkey names
 - `Spark/Panel`: `ChatPanel` (NSPanel subclass), `PanelController` (show/hide/position/resize), metrics
-- `Spark/Chat`: `ChatViewModel` and SwiftUI views
+- `Spark/Chat`: `ChatStore` (open chats in most-recently-used order, ⌃Tab switcher state), `ChatViewModel` (one chat),
+  and SwiftUI views. Panel keys (⌃Tab, ⌘N, ⌘W, Escape) are routed in `PanelController` via `ChatPanel`.
 - `Spark/Chat/Markdown`: markdown parsing (`MarkdownParser`, swift-markdown) and rendering (`MarkdownView`).
   Only `MarkdownParser.swift` may `import Markdown`; its `Text`/`Link`/`Image`/`Table` types clash with SwiftUI.
 - `Spark/Providers`: `LLMProvider` protocol, `OpenAICompatibleProvider` (SSE client; Ollama uses it via `Ollama.swift`),

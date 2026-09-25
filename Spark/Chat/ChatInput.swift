@@ -2,7 +2,8 @@ import SwiftUI
 
 /// Multi-line composer. Return sends, Shift+Return inserts a newline.
 struct ChatInput: View {
-    @Bindable var model: ChatViewModel
+    let store: ChatStore
+    @Bindable var chat: ChatViewModel
     @FocusState private var isFocused: Bool
 
     private static let maxLines = 6
@@ -11,7 +12,7 @@ struct ChatInput: View {
         VStack(alignment: .leading, spacing: 10) {
             editor
             HStack {
-                ModelPicker(model: model)
+                ModelPicker(store: store, chat: chat)
                 researchToggle
                 Spacer()
                 actionButton.composerButtonStyle()
@@ -19,30 +20,30 @@ struct ChatInput: View {
         }
         .padding(14)
         .onAppear { isFocused = true }
-        .onChange(of: model.focusRequest) { isFocused = true }
+        .onChange(of: store.focusRequest) { isFocused = true }
     }
 
     /// A `TextEditor` sized by an invisible `Text` mirror so it grows with content up to `maxLines`.
     private var editor: some View {
-        Text(model.draft.isEmpty ? " " : model.draft + " ")
+        Text(chat.draft.isEmpty ? " " : chat.draft + " ")
             .lineLimit(1...Self.maxLines)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 5)
             .hidden()
             .overlay {
-                TextEditor(text: $model.draft)
+                TextEditor(text: $chat.draft)
                     .scrollContentBackground(.hidden)
                     .scrollIndicators(.never)
                     .focused($isFocused)
                     .onKeyPress(.return, phases: .down) { press in
                         guard !press.modifiers.contains(.shift) else { return .ignored }
-                        model.send()
+                        chat.send()
                         return .handled
                     }
             }
             .overlay(alignment: .topLeading) {
-                if model.draft.isEmpty {
-                    Text(model.researchEnabled ? "Research anything…" : "Ask anything…")
+                if chat.draft.isEmpty {
+                    Text(chat.researchEnabled ? "Research anything…" : "Ask anything…")
                         .foregroundStyle(.tertiary)
                         .padding(.leading, 5)
                         .allowsHitTesting(false)
@@ -53,26 +54,26 @@ struct ChatInput: View {
 
     /// Sticky per chat; disabled until a Brave Search API key is set in Settings.
     private var researchToggle: some View {
-        Toggle(isOn: $model.researchEnabled) {
+        Toggle(isOn: $chat.researchEnabled) {
             Label("Research", systemImage: "globe")
         }
         .toggleStyle(.button)
         .controlSize(.small)
         .font(.callout)
-        .disabled(!model.isResearchAvailable)
-        .help(model.isResearchAvailable
+        .disabled(!chat.isResearchAvailable)
+        .help(chat.isResearchAvailable
               ? "Search the web and read pages before answering"
               : "Add a Brave Search API key in Settings to enable Research")
     }
 
     @ViewBuilder
     private var actionButton: some View {
-        if model.isStreaming {
-            Button("Stop", systemImage: "stop.circle.fill") { model.cancelStreaming() }
+        if chat.isStreaming {
+            Button("Stop", systemImage: "stop.circle.fill") { chat.cancelStreaming() }
                 .help("Stop generating (Esc)")
         } else {
-            Button("Send", systemImage: "arrow.up.circle.fill") { model.send() }
-                .disabled(!model.canSend)
+            Button("Send", systemImage: "arrow.up.circle.fill") { chat.send() }
+                .disabled(!chat.canSend)
                 .help("Send (Return)")
         }
     }

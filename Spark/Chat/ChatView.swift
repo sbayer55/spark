@@ -1,8 +1,9 @@
 import SwiftUI
 
-/// Root view hosted in the chat panel: a message list and a composer, each on Liquid Glass.
+/// Root view hosted in the chat panel: the active chat's message list and composer, each on Liquid Glass,
+/// with the ⌃Tab switcher over them while it's open.
 struct ChatView: View {
-    @Bindable var model: ChatViewModel
+    let store: ChatStore
     let layout: PanelLayout
     /// Reports the view's natural height so the panel can size itself to fit (only while the height isn't fixed).
     var onHeightChange: (CGFloat) -> Void = { _ in }
@@ -13,16 +14,36 @@ struct ChatView: View {
     var body: some View {
         // Content-sized until the user resizes vertically; then the message list fills the panel.
         let fillsHeight = layout.isHeightFixed
+        let chat = store.active
+        let isSwitching = store.isSwitcherOpen
 
-        GlassEffectContainer(spacing: 10) {
-            VStack(spacing: 10) {
-                if fillsHeight || !model.messages.isEmpty {
-                    messageList(fillsHeight: fillsHeight)
+        // A ZStack so the panel grows to fit the switcher when it's taller than the chat.
+        ZStack(alignment: .top) {
+            GlassEffectContainer(spacing: 10) {
+                VStack(spacing: 10) {
+                    if fillsHeight || !chat.messages.isEmpty {
+                        messageList(for: chat, fillsHeight: fillsHeight)
+                            .id(chat.id)
+                            .glassEffect(.regular, in: .rect(cornerRadius: 22, style: .continuous))
+                            .transition(.opacity)
+                    }
+                    ChatInput(store: store, chat: chat)
                         .glassEffect(.regular, in: .rect(cornerRadius: 22, style: .continuous))
-                        .transition(.opacity)
                 }
-                ChatInput(model: model)
-                    .glassEffect(.regular, in: .rect(cornerRadius: 22, style: .continuous))
+            }
+            .blur(radius: isSwitching ? 3 : 0)
+            .opacity(isSwitching ? 0.5 : 1)
+            .overlay {
+                if isSwitching {
+                    Color.clear
+                        .contentShape(.rect)
+                        .onTapGesture { store.cancelSwitcher() }
+                }
+            }
+
+            if isSwitching {
+                ChatSwitcher(store: store)
+                    .padding(.horizontal, 32)
             }
         }
         .environment(\.textScale, textScale)
@@ -37,11 +58,11 @@ struct ChatView: View {
         .frame(maxHeight: .infinity, alignment: .top)
     }
 
-    private func messageList(fillsHeight: Bool) -> some View {
+    private func messageList(for chat: ChatViewModel, fillsHeight: Bool) -> some View {
         ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
-                    ForEach(model.messages) { message in
+                    ForEach(chat.messages) { message in
                         MessageRow(message: message)
                             .id(message.id)
                     }
@@ -53,8 +74,8 @@ struct ChatView: View {
             .defaultScrollAnchor(.bottom)
             .frame(height: fillsHeight ? nil : min(listContentHeight, PanelMetrics.maxListHeight))
             .frame(maxHeight: fillsHeight ? .infinity : nil)
-            .onChange(of: scrollTrigger) {
-                if let last = model.messages.last {
+            .onChange(of: scrollTrigger(for: chat)) {
+                if let last = chat.messages.last {
                     proxy.scrollTo(last.id, anchor: .bottom)
                 }
             }
@@ -62,11 +83,11 @@ struct ChatView: View {
     }
 
     /// Changes whenever a message is added, the streaming message grows, or a research step updates.
-    private var scrollTrigger: Int {
+    private func scrollTrigger(for chat: ChatViewModel) -> Int {
         var hasher = Hasher()
-        hasher.combine(model.messages.count)
-        hasher.combine(model.messages.last?.content.count ?? 0)
-        hasher.combine(model.messages.last?.research)
+        hasher.combine(chat.messages.count)
+        hasher.combine(chat.messages.last?.content.count ?? 0)
+        hasher.combine(chat.messages.last?.research)
         return hasher.finalize()
     }
 }

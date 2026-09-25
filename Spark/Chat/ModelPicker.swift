@@ -2,9 +2,10 @@ import SwiftUI
 
 /// Compact menu listing every provider's models, grouped by provider.
 struct ModelPicker: View {
-    @Bindable var model: ChatViewModel
+    let store: ChatStore
+    let chat: ChatViewModel
 
-    private var registry: ProviderRegistry { model.registry }
+    private var registry: ProviderRegistry { store.registry }
 
     var body: some View {
         Menu {
@@ -19,15 +20,15 @@ struct ModelPicker: View {
                     ForEach(names, id: \.self) { name in
                         let option = ModelSelection(providerID: provider.id, model: name)
                         Toggle(name, isOn: Binding(
-                            get: { model.selection == option },
-                            set: { if $0 { model.select(option) } }
+                            get: { chat.selection == option },
+                            set: { if $0 { chat.select(option) } }
                         ))
                     }
                 }
             }
             Divider()
             Button("Refresh Models", systemImage: "arrow.clockwise") {
-                Task { await model.refreshModels() }
+                Task { await store.refreshModels() }
             }
         } label: {
             Label(title, systemImage: "sparkle")
@@ -40,7 +41,7 @@ struct ModelPicker: View {
     }
 
     private var title: String {
-        guard let selection = model.selection else {
+        guard let selection = chat.selection else {
             return registry.isRefreshing ? "Loading models…" : "Choose a model"
         }
         let providerName = registry.provider(id: selection.providerID)?.displayName ?? selection.providerID

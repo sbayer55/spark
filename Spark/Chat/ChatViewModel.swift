@@ -1,9 +1,11 @@
 import Foundation
 import Observation
 
+/// One chat: its transcript, draft, model, and in-flight reply. `ChatStore` holds every open chat.
 @MainActor
 @Observable
-final class ChatViewModel {
+final class ChatViewModel: Identifiable {
+    let id = UUID()
     let registry: ProviderRegistry
     let braveKey: BraveSearchKey
 
@@ -12,9 +14,15 @@ final class ChatViewModel {
     /// Whether the next send runs deep research (web search + reading) before answering. Sticky per chat.
     var researchEnabled = false
     private(set) var selection: ModelSelection?
+    /// The model this chat prefers (picked here, or inherited when it was created); restored whenever it's available.
+    private(set) var preferredSelection: ModelSelection?
 
-    /// Incremented to ask the input field to take focus (e.g. when the panel opens).
-    private(set) var focusRequest = 0
+    /// Set by `ChatStore` on the chat shown in the panel.
+    var isActive = false {
+        didSet { if isActive { hasUnreadReply = false } }
+    }
+    /// A reply finished while this chat wasn't showing.
+    private(set) var hasUnreadReply = false
 
     /// The assistant message currently being streamed, if any.
     private(set) var streamingMessageID: UUID?
@@ -29,40 +37,36 @@ final class ChatViewModel {
     /// Research needs a Brave Search API key (entered in Settings).
     var isResearchAvailable: Bool { braveKey.hasKey }
 
-    /// The model the user last picked explicitly; restored whenever it's available.
-    @ObservationIgnored private var preferredSelection: ModelSelection? {
-        get {
-            let defaults = UserDefaults.standard
-            guard let provider = defaults.string(forKey: Self.providerKey),
-                  let model = defaults.string(forKey: Self.modelKey) else { return nil }
-            return ModelSelection(providerID: provider, model: model)
-        }
-        set {
-            UserDefaults.standard.set(newValue?.providerID, forKey: Self.providerKey)
-            UserDefaults.standard.set(newValue?.model, forKey: Self.modelKey)
-        }
+    /// Nothing sent and nothing typed; such a chat is dropped once the user moves away from it.
+    var isEmpty: Bool {
+        messages.isEmpty && draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
-    private static let providerKey = "selectedProviderID"
-    private static let modelKey = "selectedModel"
+    /// The first line of the first message, or "New Chat".
+    var title: String {
+        let first = messages.first { $0.role == .user }?.content
+            .split(whereSeparator: \.isNewline).first
+        return first.map(String.init) ?? "New Chat"
+    }
 
-    init(registry: ProviderRegistry = ProviderRegistry(), braveKey: BraveSearchKey = BraveSearchKey()) {
+    init(registry: ProviderRegistry, braveKey: BraveSearchKey, preferredSelection: ModelSelection?) {
         self.registry = registry
         self.braveKey = braveKey
+        self.preferredSelection = preferredSelection
         self.selection = preferredSelection
     }
 
     func select(_ selection: ModelSelection) {
         self.selection = selection
         preferredSelection = selection
+        ModelPreference.stored = selection
     }
 
-    /// Reloads provider model lists, then restores the preferred model or falls back to a default.
-    func refreshModels() async {
-        await registry.refresh()
-        if let preferred = preferredSelection, registry.contains(preferred) {
-            selection = preferred
-        } else if preferredSelection == nil || !(selection.map(registry.contains) ?? false) {
+    /// Restores the preferred model if it's available, else falls back to a default when the current one isn't.
+    func reconcileSelection() {
+        if let preferredSelection, registry.contains(preferredSelection) {
+            selection = preferredSelection
+        } else if !(selection.map(registry.contains) ?? false) {
             selection = registry.defaultSelection
         }
     }
@@ -103,7 +107,8 @@ final class ChatViewModel {
             } catch {
                 self?.finish(reply.id, status: .failed(error.localizedDescription))
                 // The provider may have gone away; update availability (and the menu bar icon) now.
-                await self?.refreshModels()
+                await self?.registry.refresh()
+                self?.reconcileSelection()
             }
         }
     }
@@ -116,18 +121,6 @@ final class ChatViewModel {
         streamTask = nil
         finish(id, status: .cancelled)
         return true
-    }
-
-    func newChat() {
-        cancelStreaming()
-        messages.removeAll()
-        draft = ""
-        researchEnabled = false
-        requestFocus()
-    }
-
-    func requestFocus() {
-        focusRequest &+= 1
     }
 
     private func append(_ chunk: String, to id: UUID) {
@@ -165,5 +158,27 @@ final class ChatViewModel {
         }
         streamingMessageID = nil
         streamTask = nil
+        if !isActive && status != .cancelled {
+            hasUnreadReply = true
+        }
+    }
+}
+
+/// The model the user last picked in any chat; new chats start with it when there's no current chat to copy.
+enum ModelPreference {
+    private static let providerKey = "selectedProviderID"
+    private static let modelKey = "selectedModel"
+
+    static var stored: ModelSelection? {
+        get {
+            let defaults = UserDefaults.standard
+            guard let provider = defaults.string(forKey: providerKey),
+                  let model = defaults.string(forKey: modelKey) else { return nil }
+            return ModelSelection(providerID: provider, model: model)
+        }
+        set {
+            UserDefaults.standard.set(newValue?.providerID, forKey: providerKey)
+            UserDefaults.standard.set(newValue?.model, forKey: modelKey)
+        }
     }
 }

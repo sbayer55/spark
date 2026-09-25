@@ -8,11 +8,11 @@ struct SparkApp: App {
         MenuBarExtra {
             SparkMenu(panelController: appDelegate.panelController)
         } label: {
-            StatusItemLabel(registry: appDelegate.panelController.viewModel.registry)
+            StatusItemLabel(registry: appDelegate.panelController.store.registry)
         }
 
         Settings {
-            SettingsView(braveKey: appDelegate.panelController.viewModel.braveKey)
+            SettingsView(braveKey: appDelegate.panelController.store.braveKey)
         }
     }
 }
@@ -30,7 +30,7 @@ private struct SparkMenu: View {
     let panelController: PanelController
     @Environment(\.openSettings) private var openSettings
 
-    private var registry: ProviderRegistry { panelController.viewModel.registry }
+    private var registry: ProviderRegistry { panelController.store.registry }
 
     var body: some View {
         if !registry.unavailableProviders.isEmpty {
@@ -40,14 +40,14 @@ private struct SparkMenu: View {
                           systemImage: "exclamationmark.triangle")
                 }
                 Button("Check Again") {
-                    Task { await panelController.viewModel.refreshModels() }
+                    Task { await panelController.store.refreshModels() }
                 }
             }
             Divider()
         }
 
         Button("New Chat") {
-            panelController.viewModel.newChat()
+            panelController.store.newChat()
             panelController.show()
         }
         .keyboardShortcut("n")
