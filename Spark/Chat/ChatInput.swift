@@ -16,6 +16,7 @@ struct ChatInput: View {
                 researchToggle
                 Spacer()
                 actionButton.composerButtonStyle()
+                    .fixedSize()
             }
         }
         .padding(14)
@@ -57,9 +58,9 @@ struct ChatInput: View {
         Toggle(isOn: $chat.researchEnabled) {
             Label("Research", systemImage: "globe")
         }
-        .toggleStyle(.button)
-        .controlSize(.small)
-        .font(.callout)
+        .toggleStyle(ChipToggleStyle())
+        .scaledFont(.callout, maxSize: TextSize.maxControlFontSize)
+        .fixedSize()
         .disabled(!chat.isResearchAvailable)
         .help(chat.isResearchAvailable
               ? "Search the web and read pages before answering"
@@ -79,10 +80,35 @@ struct ChatInput: View {
     }
 }
 
+/// A capsule toggle drawn in SwiftUI so its text, padding, and shape all follow the text size
+/// (the system `.button` toggle style sizes its bezel and label by control size, ignoring the font).
+private struct ChipToggleStyle: ToggleStyle {
+    @Environment(\.textScale) private var scale
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        Button {
+            configuration.isOn.toggle()
+        } label: {
+            let scale = TextSize.controlScale(for: scale)
+            configuration.label
+                .padding(.horizontal, 8 * scale)
+                .padding(.vertical, 3 * scale)
+                .foregroundStyle(configuration.isOn ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
+                .background(configuration.isOn ? AnyShapeStyle(.tint.opacity(0.2)) : AnyShapeStyle(.quaternary),
+                            in: .capsule)
+                .contentShape(.capsule)
+        }
+        .buttonStyle(.plain)
+        .opacity(isEnabled ? 1 : 0.5)
+        .accessibilityAddTraits(configuration.isOn ? .isSelected : [])
+    }
+}
+
 private extension View {
     func composerButtonStyle() -> some View {
         self.labelStyle(.iconOnly)
-            .font(.title2)
+            .scaledFont(.title2)
             .buttonStyle(.borderless)
     }
 }

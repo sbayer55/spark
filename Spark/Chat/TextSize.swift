@@ -12,6 +12,16 @@ enum TextSize {
     static let key = "textScale"
     static let defaultScale = 1.0
     static let steps: [Double] = [0.8, 0.9, 1.0, 1.1, 1.2, 1.35, 1.5, 1.75, 2.0]
+    /// Largest font for the composer's controls (model picker, Research toggle). Chat and composer text aren't capped.
+    static let maxControlFontSize: CGFloat = 14
+    /// The composer's controls use `.callout` (12 pt at 1×).
+    private static let controlFontSize: CGFloat = 12
+
+    /// `scale`, limited so that `.callout` text stays within `maxControlFontSize`; for sizing that tracks
+    /// the controls' text, such as padding.
+    static func controlScale(for scale: Double) -> Double {
+        min(scale, maxControlFontSize / controlFontSize)
+    }
 
     static func apply(_ command: Command, defaults: UserDefaults = .standard) {
         let current = defaults.object(forKey: key) as? Double ?? defaultScale
@@ -29,14 +39,17 @@ extension EnvironmentValues {
 }
 
 extension View {
-    /// Sets a system font at the macOS default size of `style`, multiplied by the environment's `textScale`.
-    func scaledFont(_ style: Font.TextStyle, weight: Font.Weight? = nil, design: Font.Design? = nil) -> some View {
-        modifier(ScaledFont(size: style.defaultPointSize, weight: weight, design: design))
+    /// Sets a system font at the macOS default size of `style`, multiplied by the environment's `textScale`
+    /// and limited to `maxSize` points.
+    func scaledFont(_ style: Font.TextStyle, weight: Font.Weight? = nil, design: Font.Design? = nil,
+                    maxSize: CGFloat = .infinity) -> some View {
+        modifier(ScaledFont(size: style.defaultPointSize, weight: weight, design: design, maxSize: maxSize))
     }
 
-    /// Sets a system font of `size` points, multiplied by the environment's `textScale`.
-    func scaledFont(size: CGFloat, weight: Font.Weight? = nil, design: Font.Design? = nil) -> some View {
-        modifier(ScaledFont(size: size, weight: weight, design: design))
+    /// Sets a system font of `size` points, multiplied by the environment's `textScale` and limited to `maxSize` points.
+    func scaledFont(size: CGFloat, weight: Font.Weight? = nil, design: Font.Design? = nil,
+                    maxSize: CGFloat = .infinity) -> some View {
+        modifier(ScaledFont(size: size, weight: weight, design: design, maxSize: maxSize))
     }
 }
 
@@ -45,9 +58,10 @@ private struct ScaledFont: ViewModifier {
     let size: CGFloat
     let weight: Font.Weight?
     let design: Font.Design?
+    let maxSize: CGFloat
 
     func body(content: Content) -> some View {
-        content.font(.system(size: size * scale, weight: weight, design: design))
+        content.font(.system(size: min(size * scale, maxSize), weight: weight, design: design))
     }
 }
 

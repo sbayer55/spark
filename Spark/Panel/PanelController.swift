@@ -14,6 +14,8 @@ final class PanelController {
 
     /// The in-progress user resize: which edge or corner, and the frame and mouse location it started from.
     private var resizeStart: (position: NSCursor.FrameResizePosition, frame: NSRect, mouse: NSPoint)?
+    /// The content's last reported height, to fit the panel to it again after a user resize.
+    private var contentHeight: CGFloat?
 
     /// SwiftUI's action for opening the Settings scene, supplied by the hosted `ChatView`.
     private var openSettingsAction: OpenSettingsAction?
@@ -21,7 +23,7 @@ final class PanelController {
     init(store: ChatStore = ChatStore(), layout: PanelLayout = PanelLayout()) {
         self.store = store
         self.layout = layout
-        panel = ChatPanel(contentRect: NSRect(x: 0, y: 0, width: layout.width, height: layout.fixedHeight ?? 120))
+        panel = ChatPanel(contentRect: NSRect(x: 0, y: 0, width: layout.width, height: 120))
         resizeOverlay = PanelResizeOverlay(inset: PanelMetrics.inset, cornerRadius: PanelMetrics.cornerRadius)
 
         let hostingView = NSHostingView(rootView: ChatView(
@@ -91,6 +93,9 @@ final class PanelController {
     func show() {
         if !panel.isVisible {
             startNewChatIfExpired()
+            // Lay out now so an expired chat's replacement has already resized the panel (down to just the
+            // composer) before it's positioned and shown, rather than opening at the old size and shrinking.
+            panel.contentView?.layoutSubtreeIfNeeded()
             position(on: activeScreen())
         }
         hiddenAt = nil
@@ -196,10 +201,12 @@ final class PanelController {
     }
 
     /// Grows or shrinks the panel to fit its content, keeping the top edge fixed.
-    /// Does nothing once the user has chosen a height.
+    /// The content caps its own height at `layout.maxHeight`.
     private func resize(toContentHeight height: CGFloat) {
         let height = height.rounded(.up)
-        guard !layout.isHeightFixed else { return }
+        contentHeight = height
+        // While the user drags an edge, the drag sets the frame; the content catches up once it ends.
+        guard resizeStart == nil else { return }
         var frame = panel.frame
         guard abs(frame.height - height) > 0.5 else { return }
         frame.origin.y += frame.height - height
@@ -213,8 +220,8 @@ final class PanelController {
         resizeStart = (position, panel.frame, NSEvent.mouseLocation)
     }
 
-    /// Applies the mouse's movement since `beginResize` to the dragged edges. Width-only drags leave
-    /// the height to auto-sizing; any vertical drag hands the height to the user from then on.
+    /// Applies the mouse's movement since `beginResize` to the dragged edges. A vertical drag sets the
+    /// maximum height; once it ends, the panel shrinks back to its content if that's shorter.
     private func continueResize() {
         guard let start = resizeStart else { return }
         let mouse = NSEvent.mouseLocation
@@ -240,7 +247,7 @@ final class PanelController {
         }
 
         if start.position.movesTop || start.position.movesBottom {
-            layout.fixedHeight = frame.height
+            layout.maxHeight = frame.height
         }
         panel.setFrame(frame, display: true)
     }
@@ -249,6 +256,9 @@ final class PanelController {
         guard resizeStart != nil else { return }
         resizeStart = nil
         layout.width = panel.frame.width
+        if let contentHeight {
+            resize(toContentHeight: contentHeight)
+        }
     }
 
     /// The screen containing the mouse pointer, i.e. where the user is working.

@@ -4,8 +4,9 @@ import Observation
 
 /// The panel's user-chosen size, persisted across launches.
 ///
-/// Until the user resizes the panel vertically, `fixedHeight` is `nil` and the panel grows
-/// with its content. After a vertical resize, the height stays where the user left it.
+/// The panel always fits its content: just the composer for an empty chat, growing as messages arrive.
+/// A vertical resize sets how tall it may grow (`maxHeight`); until then, the message list is capped at
+/// `PanelMetrics.maxListHeight`.
 @MainActor
 @Observable
 final class PanelLayout {
@@ -13,13 +14,12 @@ final class PanelLayout {
         didSet { defaults.set(Double(width), forKey: Self.widthKey) }
     }
 
-    /// The user's chosen height, or `nil` while the panel sizes itself to its content.
-    var fixedHeight: CGFloat? {
-        didSet { defaults.set(fixedHeight.map(Double.init), forKey: Self.heightKey) }
+    /// The tallest the user lets the panel grow (window height, including the inset), or `nil` for the default cap.
+    var maxHeight: CGFloat? {
+        didSet { defaults.set(maxHeight.map(Double.init), forKey: Self.heightKey) }
     }
 
-    var isHeightFixed: Bool { fixedHeight != nil }
-    var isCustomized: Bool { isHeightFixed || width != PanelMetrics.width }
+    var isCustomized: Bool { maxHeight != nil || width != PanelMetrics.width }
 
     @ObservationIgnored private let defaults: UserDefaults
     private static let widthKey = "panelWidth"
@@ -28,12 +28,12 @@ final class PanelLayout {
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         width = (defaults.object(forKey: Self.widthKey) as? Double).map { CGFloat($0) } ?? PanelMetrics.width
-        fixedHeight = (defaults.object(forKey: Self.heightKey) as? Double).map { CGFloat($0) }
+        maxHeight = (defaults.object(forKey: Self.heightKey) as? Double).map { CGFloat($0) }
     }
 
-    /// Returns to the default width and content-driven height.
+    /// Returns to the default width and height cap.
     func reset() {
         width = PanelMetrics.width
-        fixedHeight = nil
+        maxHeight = nil
     }
 }

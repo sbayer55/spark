@@ -34,7 +34,7 @@ From the command line:
 ```bash
 xcodegen generate
 xcodebuild -scheme Spark -destination 'platform=macOS' -derivedDataPath build build
-open build/Build/Products/Debug/Spark.app
+open build/Build/Products/Debug/Spark.app --args -SparkEphemeralSecrets YES
 ```
 
 Spark has no Dock icon. Look for the ✦ sparkle in the menu bar.

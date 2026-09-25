@@ -9,6 +9,8 @@ enum PanelMetrics {
     static let inset: CGFloat = 12
     /// Corner radius of the chat panel's background.
     static let cornerRadius: CGFloat = 22
-    /// While the panel sizes itself to its content, the message list scrolls once it exceeds this height.
+    /// Until the user sets a maximum height by resizing, the message list scrolls once it exceeds this height.
     static let maxListHeight: CGFloat = 460
+    /// The message list never gets shorter than this, however small the user's maximum height.
+    static let minListHeight: CGFloat = 60
 }
