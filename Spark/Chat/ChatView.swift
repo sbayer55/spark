@@ -21,11 +21,14 @@ struct ChatView: View {
         ZStack(alignment: .top) {
             GlassEffectContainer(spacing: 10) {
                 VStack(spacing: 10) {
-                    if fillsHeight || !chat.messages.isEmpty {
+                    if !chat.messages.isEmpty {
                         messageList(for: chat, fillsHeight: fillsHeight)
                             .id(chat.id)
                             .glassEffect(.regular, in: .rect(cornerRadius: 22, style: .continuous))
                             .transition(.opacity)
+                    } else if fillsHeight {
+                        // No empty glass for a new chat; keep the composer at the bottom of the fixed-height panel.
+                        Spacer(minLength: 0)
                     }
                     ChatInput(store: store, chat: chat)
                         .glassEffect(.regular, in: .rect(cornerRadius: 22, style: .continuous))
