@@ -72,3 +72,40 @@ struct BedrockSection: View {
         Task { await store.refreshModels() }
     }
 }
+
+/// Settings section for a local gateway (Bifrost, 9router): on/off, server URL, optional key and model list.
+/// The gateway appears in the model picker while it's turned on.
+struct GatewaySection: View {
+    let store: ChatStore
+    let settings: GatewaySettings
+
+    var body: some View {
+        @Bindable var settings = settings
+        @Bindable var key = settings.apiKey
+        Section {
+            Toggle("Use \(settings.kind.displayName)", isOn: $settings.isEnabled)
+            TextField("Server URL", text: $settings.baseURLText, prompt: Text(settings.kind.defaultBaseURL))
+                .textContentType(.URL)
+                .autocorrectionDisabled()
+                .onSubmit(refreshModels)
+            SecureField("API key", text: $key.text, prompt: Text(settings.kind.keyPrompt))
+                .textContentType(.password)
+                .autocorrectionDisabled()
+                .onSubmit(refreshModels)
+            TextField("Models", text: $settings.modelsText, prompt: Text("Ask the server (comma-separated to list your own)"))
+                .autocorrectionDisabled()
+                .onSubmit(refreshModels)
+        } header: {
+            Text(settings.kind.displayName)
+        } footer: {
+            Text("\(settings.kind.help) The key is stored in your Keychain.")
+                .foregroundStyle(.secondary)
+        }
+        .onChange(of: settings.isEnabled, refreshModels)
+        .onChange(of: settings.modelsText, refreshModels)
+    }
+
+    private func refreshModels() {
+        Task { await store.refreshModels() }
+    }
+}

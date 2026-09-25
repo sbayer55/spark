@@ -18,7 +18,7 @@ protocol LLMProvider: Sendable {
 }
 
 /// A provider + model pair selected in the UI.
-struct ModelSelection: Hashable, Sendable {
+struct ModelSelection: Hashable, Codable, Sendable {
     let providerID: String
     let model: String
 }

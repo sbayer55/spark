@@ -21,7 +21,8 @@ struct ChatInput: View {
         }
         .padding(14)
         .onAppear { isFocused = true }
-        .onChange(of: store.focusRequest) { isFocused = true }
+        // The ⌘K history list has its own search field, which keeps the keyboard until it closes.
+        .onChange(of: store.focusRequest) { if !store.isHistoryOpen { isFocused = true } }
     }
 
     /// A `TextEditor` sized by an invisible `Text` mirror so it grows with content up to `maxLines`.

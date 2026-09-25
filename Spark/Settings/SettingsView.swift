@@ -34,7 +34,7 @@ struct SettingsView: View {
     private var detail: some View {
         switch category {
         case .general:
-            GeneralSettingsView()
+            GeneralSettingsView(store: store)
         case .models:
             ModelsSettingsView(store: store)
         case .research:
@@ -86,8 +86,11 @@ private struct SettingsForm<Content: View>: View {
 }
 
 private struct GeneralSettingsView: View {
+    let store: ChatStore
     @AppStorage(ChatRetention.key) private var retentionMinutes = ChatRetention.defaultMinutes
+    @AppStorage(ChatArchive.enabledKey) private var isHistoryEnabled = true
     @AppStorage(SystemPrompt.key) private var systemPrompt = ""
+    @State private var isConfirmingClear = false
 
     var body: some View {
         SettingsForm {
@@ -101,8 +104,26 @@ private struct GeneralSettingsView: View {
                     }
                 }
             } footer: {
-                Text("When you reopen Spark after this long, it starts a new chat.")
+                Text("When you reopen Spark after this long, it starts a new chat. Earlier chats stay in the history (⌘K).")
                     .foregroundStyle(.secondary)
+            }
+            Section {
+                Toggle("Save chat history", isOn: $isHistoryEnabled)
+                LabeledContent("Saved chats", value: store.archive.records.count.formatted())
+                Button("Clear History…", role: .destructive) {
+                    isConfirmingClear = true
+                }
+                .disabled(store.archive.records.isEmpty)
+            } footer: {
+                Text("Saved chats can be reopened with ⌘K, and open chats come back after Spark relaunches. Turning this off stops saving new chats; the ones already saved stay until you clear them.")
+                    .foregroundStyle(.secondary)
+            }
+            .confirmationDialog("Delete every saved chat?", isPresented: $isConfirmingClear) {
+                Button("Delete All", role: .destructive) {
+                    store.archive.clear()
+                }
+            } message: {
+                Text("Open chats stay open. This can't be undone.")
             }
             Section {
                 TextEditor(text: $systemPrompt)
@@ -141,6 +162,8 @@ private struct ModelsSettingsView: View {
             }
             AnthropicSection(store: store)
             BedrockSection(store: store)
+            GatewaySection(store: store, settings: store.registry.bifrost)
+            GatewaySection(store: store, settings: store.registry.nineRouter)
             CustomProvidersSection(store: store)
         }
     }

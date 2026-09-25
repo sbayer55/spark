@@ -25,3 +25,25 @@ enum ChatRetention {
         return elapsed >= .seconds(minutes * 60)
     }
 }
+
+extension ChatRetention {
+    /// When the panel was last hidden, kept across launches so restored chats honor the retention setting too.
+    static let panelHiddenAtKey = "panelHiddenAt"
+
+    static func recordPanelHidden(at date: Date = .now, defaults: UserDefaults = .standard) {
+        guard !LaunchOptions.ephemeralHistory else { return }
+        defaults.set(date, forKey: panelHiddenAtKey)
+    }
+
+    static func recordPanelShown(defaults: UserDefaults = .standard) {
+        guard !LaunchOptions.ephemeralHistory else { return }
+        defaults.removeObject(forKey: panelHiddenAtKey)
+    }
+
+    /// Whether the chats open when the panel was last hidden (possibly in an earlier launch) should be dropped.
+    /// With no record of a hide (first launch, or the app quit with the panel showing) they're kept.
+    static func hasExpiredSincePanelHidden(defaults: UserDefaults = .standard) -> Bool {
+        guard let hiddenAt = defaults.object(forKey: panelHiddenAtKey) as? Date else { return false }
+        return hasExpired(closedFor: .seconds(max(0, Date.now.timeIntervalSince(hiddenAt))), defaults: defaults)
+    }
+}

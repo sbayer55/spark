@@ -9,7 +9,6 @@ Status keys: `idea` (unvetted), `next` (agreed, not started), `wip` (in progress
 
 | Feature | Status | Notes |
 | --- | --- | --- |
-| Chat persistence | idea | SQLite or JSON under Application Support. Enables history, ⌘K recent-chat search, survives relaunch. Unlocks many items below. |
 | Selected-text capture | idea | Second hotkey grabs the frontmost app's selection and opens the panel with it quoted. The core menu-bar-assistant workflow. |
 | Image attachments | idea | Drag or paste an image into the composer. Anthropic, Bedrock Converse, and Ollama vision models all accept images. Needs content parts in `ChatMessage` and `AlternatingTranscript`. |
 
@@ -17,7 +16,6 @@ Status keys: `idea` (unvetted), `next` (agreed, not started), `wip` (in progress
 
 | Feature | Status | Notes |
 | --- | --- | --- |
-| Real Bifrost and 9router clients | idea | Still `MockProvider` (see TODOs in `ProviderRegistry.swift`). Both are OpenAI-compatible, so point `OpenAICompatibleProvider` at them. |
 | Message hover actions | idea | Copy as markdown, copy code block, regenerate, edit-and-resend on `MessageRow`. |
 | Export chat | idea | Copy whole thread or save as markdown. |
 
@@ -70,6 +68,8 @@ Status keys: `idea` (unvetted), `next` (agreed, not started), `wip` (in progress
 
 | Feature | Shipped |
 | --- | --- |
+| Chat persistence: JSON history under Application Support, ⌘K search, open chats restored on relaunch | unreleased |
+| Real Bifrost and 9router clients (OpenAI-compatible gateways, switched on in Settings) | unreleased |
 | Multi-chat with ⌃Tab switcher | fa14e26 |
 | Deep research mode with live progress | f6e529e |
 | Color themes, transparency, and blur settings | d393813, 10322d9 |

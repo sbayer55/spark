@@ -26,6 +26,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    func applicationWillTerminate(_ notification: Notification) {
+        panelController.prepareForTermination()
+    }
+
     /// (Re)starts the periodic provider check, running one immediately.
     private func startAvailabilityChecks() {
         availabilityTask?.cancel()

@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Root view hosted in the chat panel: the active chat's message list and composer on a single flat panel,
-/// with the ⌃Tab switcher or ⌘/ shortcuts list over them while one is open.
+/// with the ⌃Tab switcher, ⌘K history, or ⌘/ shortcuts list over them while one is open.
 struct ChatView: View {
     let store: ChatStore
     let layout: PanelLayout
@@ -23,7 +23,8 @@ struct ChatView: View {
         let chat = store.active
         let isSwitching = store.isSwitcherOpen
         let isShowingShortcuts = store.isShowingShortcuts
-        let isCovered = isSwitching || isShowingShortcuts
+        let isHistoryOpen = store.isHistoryOpen
+        let isCovered = isSwitching || isShowingShortcuts || isHistoryOpen
         let theme = Theme.named(themeID)
 
         // A ZStack so the panel grows to fit the switcher when it's taller than the chat.
@@ -55,12 +56,16 @@ struct ChatView: View {
                         .onTapGesture {
                             store.cancelSwitcher()
                             store.dismissShortcuts()
+                            store.dismissHistory()
                         }
                 }
             }
 
             if isSwitching {
                 ChatSwitcher(store: store)
+                    .padding(.horizontal, 32)
+            } else if isHistoryOpen {
+                ChatHistoryView(store: store)
                     .padding(.horizontal, 32)
             } else if isShowingShortcuts {
                 ShortcutsOverlay(store: store)

@@ -24,13 +24,20 @@ Native macOS menu bar app for quick AI chats across multiple LLM providers (Olla
   `scinfu/SwiftSoup` (only `Spark/Research/PageReader.swift` may `import SwiftSoup`), `jpsim/Yams`
   (only `Spark/Providers/Import/DeepSeekHarnessConfig.swift` may `import Yams`).
 - App Sandbox is on (with outgoing network client, and read-only access to files the user picks). `LSUIElement` is on (no Dock icon).
-- Chat state is in memory only (no persistence yet). Several chats can be open at once (⌘N new, ⌘W close,
-  ⌃Tab switcher); a background chat keeps streaming. A closed panel keeps its chats for the "Keep chat after closing"
-  setting (`ChatRetention`, default 5 minutes); reopening after that drops every chat not mid-reply and starts a new one.
-  Settings (Ollama URL, last-picked model, retention, system prompt, panel size, text size, theme, panel transparency
-  and blur) live in `UserDefaults`. The system prompt (`SystemPrompt`) is read at each send; research uses it only
+- Several chats can be open at once (⌘N new, ⌘W close, ⌃Tab switcher); a background chat keeps streaming.
+  A closed panel keeps its chats for the "Keep chat after closing" setting (`ChatRetention`, default 5 minutes);
+  reopening after that drops every chat not mid-reply and starts a new one.
+  **Chat history** (`ChatArchive`): every chat with messages is saved as JSON (`ChatRecord`) under the sandbox
+  container's `Application Support/Chats`, rewritten after each send and reply; ⌘K (`ChatHistoryView`) searches and
+  reopens saved chats; the open chats (`openChatIDs`) come back at the next launch unless the retention window has
+  passed since the panel was last hidden (`panelHiddenAt`). General settings has a "Save chat history" switch and
+  "Clear History". Settings (Ollama URL, last-picked model, retention, system prompt, panel size, text size, theme,
+  panel transparency and blur) live in `UserDefaults`. The system prompt (`SystemPrompt`) is read at each send; research uses it only
   for the final answer, since the planning prompts need their strict JSON instructions.
   The Brave Search API key lives in the Keychain (`Keychain.swift`, mirrored by `BraveSearchKey`), never in `UserDefaults`.
+- **Bifrost and 9router** are local OpenAI-compatible gateways (`GatewaySettings` → `OpenAICompatibleProvider`),
+  listed only while switched on in Settings; URL and optional model list in `UserDefaults`, API key in the Keychain.
+  Importing `~/.9router` fills in the built-in 9router entry rather than adding a custom provider.
 - **Anthropic and Amazon Bedrock** are native clients, listed only once their credentials are set in Settings.
   Anthropic: API key in the Keychain (`KeychainSecret`). Bedrock: region and sign-in method in `UserDefaults`,
   credentials (Bedrock API key, or IAM access key + optional session token) in one Keychain item (`BedrockSettings`).
@@ -63,22 +70,25 @@ open <DerivedData>/Build/Products/Debug/Spark.app --env SPARK_SECRET_ANTHROPIC_A
 ```
 - `-SparkEphemeralSecrets YES` keeps secrets in memory (no Keychain prompts, which ad-hoc signing triggers on every
   rebuild). Seed them with `SPARK_SECRET_<ACCOUNT>` env vars (see `Keychain`). Automatic under XCTest.
+- `-SparkEphemeralHistory YES` keeps chat history in memory, so a test run never reads or writes the user's saved chats.
+  Automatic under XCTest.
 - `-SparkShowPanelOnLaunch YES` opens the chat panel at launch; scripts can't press the global hotkey.
 - Any setting can be overridden for one launch with `-<defaultsKey> <value>` (argument domain; not persisted).
 
 ## Layout
 - `Spark/App`: `@main` app (MenuBarExtra + Settings scenes), AppDelegate, hotkey names
 - `Spark/Panel`: `ChatPanel` (NSPanel subclass), `PanelController` (show/hide/position/resize), metrics
-- `Spark/Chat`: `ChatStore` (open chats in most-recently-used order, ⌃Tab switcher state), `ChatViewModel` (one chat),
-  and SwiftUI views. Panel keys (⌃Tab, ⌘N, ⌘W, Escape) are routed in `PanelController` via `ChatPanel`.
+- `Spark/Chat`: `ChatStore` (open chats in most-recently-used order, ⌃Tab switcher and ⌘K history state),
+  `ChatViewModel` (one chat), `ChatArchive` (saved chats on disk), and SwiftUI views. Panel keys (⌃Tab, ⌘K, ⌘N, ⌘W,
+  Escape) are routed in `PanelController` via `ChatPanel`.
 - `Spark/Chat/Markdown`: markdown parsing (`MarkdownParser`, swift-markdown) and rendering (`MarkdownView`).
   Only `MarkdownParser.swift` may `import Markdown`; its `Text`/`Link`/`Image`/`Table` types clash with SwiftUI.
 - `Spark/Providers`: `LLMProvider` protocol, `OpenAICompatibleProvider` (SSE client; Ollama uses it via `Ollama.swift`),
   `AnthropicProvider` (Messages API), `ProviderHTTP` (shared error handling), `AlternatingTranscript` (system prompt +
-  alternating turns for Anthropic/Bedrock), `MockProvider` (Bifrost/9router until real clients land; see TODOs),
-  `ProviderRegistry` (live model lists), `CustomProviders` (user-added providers); `Bedrock/` holds the Bedrock client,
+  alternating turns for Anthropic/Bedrock), `GatewaySettings` (Bifrost and 9router), `ProviderRegistry` (live model
+  lists), `CustomProviders` (user-added providers); `Bedrock/` holds the Bedrock client,
   settings, SigV4 signer, and event-stream decoder; `Import/` holds the per-tool config readers (`ProviderImporter` entry point)
-- `Spark/Models`: `ChatMessage`, `Research` (research steps, sources, events)
+- `Spark/Models`: `ChatMessage`, `ChatRecord` (a saved chat), `Research` (research steps, sources, events)
 - `Spark/Research`: `ResearchAgent` (orchestration), `ResearchPrompts`, `BraveSearchClient`, `PageReader` (SwiftSoup),
   `BraveSearchKey` (Keychain-backed key store)
 - `Spark/Settings`: Settings window (General tab, Appearance tab with the `ThemePicker` grid), `Keychain` helper

@@ -1,14 +1,14 @@
 import Foundation
 
 /// Live progress and provenance of a research-mode reply. Attached to the assistant `ChatMessage`.
-struct ResearchState: Hashable, Sendable {
+struct ResearchState: Hashable, Codable, Sendable {
     var steps: [ResearchStep] = []
     var sources: [ResearchSource] = []
 }
 
 /// One unit of work shown in the progress list ("Searching: …", "Reading example.com").
-struct ResearchStep: Identifiable, Hashable, Sendable {
-    enum Status: Hashable, Sendable {
+struct ResearchStep: Identifiable, Hashable, Codable, Sendable {
+    enum Status: Hashable, Codable, Sendable {
         case running
         case done
         case failed(String)
@@ -27,7 +27,7 @@ struct ResearchStep: Identifiable, Hashable, Sendable {
 }
 
 /// A page the agent read, numbered for inline citations.
-struct ResearchSource: Identifiable, Hashable, Sendable {
+struct ResearchSource: Identifiable, Hashable, Codable, Sendable {
     /// 1-based citation number, stable across rounds.
     let id: Int
     let title: String

@@ -2,7 +2,7 @@ import Foundation
 
 /// How a chat answers the next message, picked in the composer (Cursor-style) or cycled with ⇧Tab.
 /// Declaration order is the menu order and the ⇧Tab cycle.
-enum ChatMode: String, CaseIterable, Identifiable, Sendable {
+enum ChatMode: String, CaseIterable, Identifiable, Codable, Sendable {
     /// A plain reply from the model.
     case ask
     /// A short, direct answer: the same plain reply, with a brevity instruction appended to the system prompt.

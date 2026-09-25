@@ -34,6 +34,7 @@ struct ShortcutsOverlay: View {
             Group(title: "Chats", shortcuts: [
                 Shortcut(keys: "⌘N", action: "New chat"),
                 Shortcut(keys: "⌘W", action: "Close chat"),
+                Shortcut(keys: "⌘K", action: "Chat history"),
                 Shortcut(keys: "⌃Tab", action: "Switch chats (hold ⌃, press Tab)"),
                 Shortcut(keys: "⌃⇧Tab", action: "Switch chats backward"),
             ]),
