@@ -1,53 +1,68 @@
 import SwiftUI
 
-/// Root view hosted in the chat panel: the active chat's message list and composer, each on Liquid Glass,
-/// with the ⌃Tab switcher over them while it's open.
+/// Root view hosted in the chat panel: the active chat's message list and composer on a single flat panel,
+/// with the ⌃Tab switcher or ⌘/ shortcuts list over them while one is open.
 struct ChatView: View {
     let store: ChatStore
     let layout: PanelLayout
-    /// Reports the view's natural height so the panel can size itself to fit (only while the height isn't fixed).
+    /// Reports the view's natural height so the panel can size itself to fit.
     var onHeightChange: (CGFloat) -> Void = { _ in }
+    /// Hands over SwiftUI's `openSettings` action so the AppKit panel can open Settings (⌘,).
+    var onOpenSettingsAction: (OpenSettingsAction) -> Void = { _ in }
+
+    @Environment(\.openSettings) private var openSettings
 
     @State private var listContentHeight: CGFloat = 0
+    /// Height of everything below the message list (divider and composer), to work out the list's share of the maximum.
+    @State private var composerHeight: CGFloat = 0
     @AppStorage(TextSize.key) private var textScale = TextSize.defaultScale
     @AppStorage(Theme.key) private var themeID = Theme.systemID
 
     var body: some View {
-        // Content-sized until the user resizes vertically; then the message list fills the panel.
-        let fillsHeight = layout.isHeightFixed
+        // Always content-sized: just the composer for an empty chat, growing as messages arrive up to the cap.
         let chat = store.active
         let isSwitching = store.isSwitcherOpen
+        let isShowingShortcuts = store.isShowingShortcuts
+        let isCovered = isSwitching || isShowingShortcuts
         let theme = Theme.named(themeID)
 
         // A ZStack so the panel grows to fit the switcher when it's taller than the chat.
         ZStack(alignment: .top) {
-            GlassEffectContainer(spacing: 10) {
-                VStack(spacing: 10) {
+            // One flat panel: the message list and composer share a single background.
+            VStack(spacing: 0) {
+                if !chat.messages.isEmpty {
+                    messageList(for: chat)
+                        .id(chat.id)
+                        .transition(.opacity)
+                }
+                VStack(spacing: 0) {
                     if !chat.messages.isEmpty {
-                        messageList(for: chat, fillsHeight: fillsHeight)
-                            .id(chat.id)
-                            .panelGlass(cornerRadius: 22)
-                            .transition(.opacity)
-                    } else if fillsHeight {
-                        // No empty glass for a new chat; keep the composer at the bottom of the fixed-height panel.
-                        Spacer(minLength: 0)
+                        Divider()
+                            .padding(.horizontal, 14)
                     }
                     ChatInput(store: store, chat: chat)
-                        .panelGlass(cornerRadius: 22)
                 }
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { composerHeight = $0 }
             }
-            .blur(radius: isSwitching ? 3 : 0)
-            .opacity(isSwitching ? 0.5 : 1)
+            .panelBackground(cornerRadius: PanelMetrics.cornerRadius)
+            .blur(radius: isCovered ? 3 : 0)
+            .opacity(isCovered ? 0.5 : 1)
             .overlay {
-                if isSwitching {
+                if isCovered {
                     Color.clear
                         .contentShape(.rect)
-                        .onTapGesture { store.cancelSwitcher() }
+                        .onTapGesture {
+                            store.cancelSwitcher()
+                            store.dismissShortcuts()
+                        }
                 }
             }
 
             if isSwitching {
                 ChatSwitcher(store: store)
+                    .padding(.horizontal, 32)
+            } else if isShowingShortcuts {
+                ShortcutsOverlay(store: store)
                     .padding(.horizontal, 32)
             }
         }
@@ -58,14 +73,20 @@ struct ChatView: View {
         .writingToolsBehavior(.disabled)
         .padding(PanelMetrics.inset)
         .frame(maxWidth: .infinity)
-        .fixedSize(horizontal: false, vertical: !fillsHeight)
-        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height in
-            if !layout.isHeightFixed { onHeightChange(height) }
-        }
+        .fixedSize(horizontal: false, vertical: true)
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { onHeightChange($0) }
         .frame(maxHeight: .infinity, alignment: .top)
+        .onAppear { onOpenSettingsAction(openSettings) }
     }
 
-    private func messageList(for chat: ChatViewModel, fillsHeight: Bool) -> some View {
+    /// The message list's height limit: what's left of the user's maximum panel height after the composer
+    /// and inset, or the default cap.
+    private var maxListHeight: CGFloat {
+        guard let maxHeight = layout.maxHeight else { return PanelMetrics.maxListHeight }
+        return max(PanelMetrics.minListHeight, maxHeight - composerHeight - 2 * PanelMetrics.inset)
+    }
+
+    private func messageList(for chat: ChatViewModel) -> some View {
         ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
@@ -79,8 +100,7 @@ struct ChatView: View {
             }
             .scrollIndicators(.automatic)
             .defaultScrollAnchor(.bottom)
-            .frame(height: fillsHeight ? nil : min(listContentHeight, PanelMetrics.maxListHeight))
-            .frame(maxHeight: fillsHeight ? .infinity : nil)
+            .frame(height: min(listContentHeight, maxListHeight))
             .onChange(of: scrollTrigger(for: chat)) {
                 if let last = chat.messages.last {
                     proxy.scrollTo(last.id, anchor: .bottom)

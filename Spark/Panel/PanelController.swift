@@ -7,24 +7,33 @@ final class PanelController {
     let store: ChatStore
     let layout: PanelLayout
     private let panel: ChatPanel
+    private let resizeOverlay: PanelResizeOverlay
 
     /// When the panel was last hidden; `nil` while it's showing. Continuous clock, so time asleep counts.
     private var hiddenAt: ContinuousClock.Instant?
 
     /// The in-progress user resize: which edge or corner, and the frame and mouse location it started from.
     private var resizeStart: (position: NSCursor.FrameResizePosition, frame: NSRect, mouse: NSPoint)?
+    /// The content's last reported height, to fit the panel to it again after a user resize.
+    private var contentHeight: CGFloat?
+
+    /// SwiftUI's action for opening the Settings scene, supplied by the hosted `ChatView`.
+    private var openSettingsAction: OpenSettingsAction?
 
     init(store: ChatStore = ChatStore(), layout: PanelLayout = PanelLayout()) {
         self.store = store
         self.layout = layout
-        panel = ChatPanel(contentRect: NSRect(x: 0, y: 0, width: layout.width, height: layout.fixedHeight ?? 120))
+        panel = ChatPanel(contentRect: NSRect(x: 0, y: 0, width: layout.width, height: 120))
+        resizeOverlay = PanelResizeOverlay(inset: PanelMetrics.inset, cornerRadius: PanelMetrics.cornerRadius)
 
-        let hostingView = NSHostingView(rootView: ChatView(store: store, layout: layout) { [weak self] height in
-            self?.resize(toContentHeight: height)
-        })
+        let hostingView = NSHostingView(rootView: ChatView(
+            store: store,
+            layout: layout,
+            onHeightChange: { [weak self] height in self?.resize(toContentHeight: height) },
+            onOpenSettingsAction: { [weak self] action in self?.openSettingsAction = action }
+        ))
         hostingView.sizingOptions = []
 
-        let resizeOverlay = PanelResizeOverlay(inset: PanelMetrics.inset)
         resizeOverlay.onBegin = { [weak self] position in self?.beginResize(from: position) }
         resizeOverlay.onDrag = { [weak self] in self?.continueResize() }
         resizeOverlay.onEnd = { [weak self] in self?.endResize() }
@@ -44,14 +53,26 @@ final class PanelController {
         panel.onResignKey = { [weak self] in self?.store.cancelSwitcher() }
 
         applyThemeAppearance()
+        applyGaussianBlur()
         NotificationCenter.default.addObserver(
             forName: UserDefaults.didChangeNotification, object: nil, queue: .main
         ) { [weak self] _ in
-            MainActor.assumeIsolated { self?.applyThemeAppearance() }
+            MainActor.assumeIsolated {
+                self?.applyThemeAppearance()
+                self?.applyGaussianBlur()
+            }
         }
     }
 
-    /// Matches the panel's appearance to the theme's light or dark background, so the glass, menus, and
+    /// Sets the window server's Gaussian background blur from the appearance settings (0 turns it off).
+    /// While it's on, the resize overlay stops painting outside the panel so that margin isn't blurred too.
+    private func applyGaussianBlur() {
+        let radius = PanelAppearance.gaussianRadius()
+        SkyLight.setBackgroundBlur(radius: radius, for: panel)
+        resizeOverlay.paintsOutsidePanel = radius == 0
+    }
+
+    /// Matches the panel's appearance to the theme's light or dark background, so the blur, menus, and
     /// system controls agree with it. The system look (no theme) follows the system appearance.
     private func applyThemeAppearance() {
         let name: NSAppearance.Name? = Theme.current().map { $0.isDark ? .darkAqua : .aqua }
@@ -72,10 +93,14 @@ final class PanelController {
     func show() {
         if !panel.isVisible {
             startNewChatIfExpired()
+            // Lay out now so an expired chat's replacement has already resized the panel (down to just the
+            // composer) before it's positioned and shown, rather than opening at the old size and shrinking.
+            panel.contentView?.layoutSubtreeIfNeeded()
             position(on: activeScreen())
         }
         hiddenAt = nil
         panel.makeKeyAndOrderFront(nil)
+        applyGaussianBlur()
         store.requestFocus()
         // Cheap local call; picks up models pulled or servers started since last open.
         Task { await store.refreshModels() }
@@ -83,6 +108,7 @@ final class PanelController {
 
     func hide() {
         store.cancelSwitcher()
+        store.dismissShortcuts()
         panel.orderOut(nil)
         hiddenAt = .now
     }
@@ -104,15 +130,33 @@ final class PanelController {
         // The content re-reports its natural height once it stops filling the fixed height.
     }
 
+    /// Closes the panel and brings the Settings window to the front.
+    func openSettings() {
+        // Menu bar (LSUIElement) apps must activate first or the window opens behind other apps. The panel is
+        // non-activating, so another app is still active here and it ignores the cooperative `NSApp.activate()`
+        // (Settings opened behind it when tested). `ignoringOtherApps:` is marked "to be deprecated" but still works.
+        NSApp.activate(ignoringOtherApps: true)
+        openSettingsAction?()
+        hide()
+    }
+
+    /// Opens the panel with the keyboard shortcuts overlay showing (⌘/ from elsewhere in the app, e.g. Settings).
+    func showShortcuts() {
+        store.showShortcuts()
+        show()
+    }
+
     private func handleEscape() {
-        if !store.active.cancelStreaming() {
+        if store.isShowingShortcuts {
+            store.dismissShortcuts()
+        } else if !store.active.cancelStreaming() {
             hide()
         }
     }
 
     // MARK: - Chat keys
 
-    /// ⌘N / ⌘W, and the ⌃Tab switcher: hold ⌃ and press Tab (⇧Tab backward) to move, release ⌃ to switch.
+    /// ⌘N / ⌘W / ⌘, (Settings) / ⌘/ (shortcuts), ⇧Tab (next chat mode), and the ⌃Tab switcher: hold ⌃ and press Tab (⇧Tab backward) to move, release ⌃ to switch.
     /// While the switcher is open it takes every key: arrows move, Return switches, Escape cancels.
     private func handleKey(_ event: NSEvent) -> Bool {
         let modifiers = event.modifierFlags.intersection([.command, .option, .control, .shift])
@@ -128,6 +172,20 @@ final class PanelController {
         if event.keyCode == KeyCode.tab, modifiers.contains(.control) {
             store.cycleSwitcher(backward: modifiers.contains(.shift))
             return true
+        }
+        if event.keyCode == KeyCode.tab, modifiers == .shift, !store.isSwitcherOpen {
+            store.dismissShortcuts()
+            store.active.cycleMode()
+            return true
+        }
+
+        if modifiers == .command && event.charactersIgnoringModifiers == "/" {
+            store.toggleShortcuts()
+            return true
+        }
+        // Typing anything else closes the shortcuts list and carries on as usual (Escape closes it in `handleEscape`).
+        if store.isShowingShortcuts && event.keyCode != KeyCode.escape {
+            store.dismissShortcuts()
         }
 
         if store.isSwitcherOpen {
@@ -145,6 +203,7 @@ final class PanelController {
             switch event.charactersIgnoringModifiers {
             case "n": store.newChat(); return true
             case "w": store.closeActiveChat(); return true
+            case ",": openSettings(); return true
             default: break
             }
         }
@@ -165,10 +224,12 @@ final class PanelController {
     }
 
     /// Grows or shrinks the panel to fit its content, keeping the top edge fixed.
-    /// Does nothing once the user has chosen a height.
+    /// The content caps its own height at `layout.maxHeight`.
     private func resize(toContentHeight height: CGFloat) {
         let height = height.rounded(.up)
-        guard !layout.isHeightFixed else { return }
+        contentHeight = height
+        // While the user drags an edge, the drag sets the frame; the content catches up once it ends.
+        guard resizeStart == nil else { return }
         var frame = panel.frame
         guard abs(frame.height - height) > 0.5 else { return }
         frame.origin.y += frame.height - height
@@ -182,8 +243,8 @@ final class PanelController {
         resizeStart = (position, panel.frame, NSEvent.mouseLocation)
     }
 
-    /// Applies the mouse's movement since `beginResize` to the dragged edges. Width-only drags leave
-    /// the height to auto-sizing; any vertical drag hands the height to the user from then on.
+    /// Applies the mouse's movement since `beginResize` to the dragged edges. A vertical drag sets the
+    /// maximum height; once it ends, the panel shrinks back to its content if that's shorter.
     private func continueResize() {
         guard let start = resizeStart else { return }
         let mouse = NSEvent.mouseLocation
@@ -209,7 +270,7 @@ final class PanelController {
         }
 
         if start.position.movesTop || start.position.movesBottom {
-            layout.fixedHeight = frame.height
+            layout.maxHeight = frame.height
         }
         panel.setFrame(frame, display: true)
     }
@@ -218,6 +279,9 @@ final class PanelController {
         guard resizeStart != nil else { return }
         resizeStart = nil
         layout.width = panel.frame.width
+        if let contentHeight {
+            resize(toContentHeight: contentHeight)
+        }
     }
 
     /// The screen containing the mouse pointer, i.e. where the user is working.

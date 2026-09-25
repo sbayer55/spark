@@ -20,7 +20,7 @@ struct OpenAICompatibleProvider: LLMProvider {
         let request = makeRequest(path: "models", method: "GET", timeout: 5)
         do {
             let (data, response) = try await session.data(for: request)
-            try Self.validate(response, body: data)
+            try ProviderHTTP.validate(response, body: data)
             let list = try JSONDecoder().decode(ModelList.self, from: data)
             return list.data.map(\.id).sorted()
         } catch {
@@ -49,14 +49,7 @@ struct OpenAICompatibleProvider: LLMProvider {
             let producer = Task {
                 do {
                     let (bytes, response) = try await session.bytes(for: request)
-                    if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
-                        var body = Data()
-                        for try await byte in bytes {
-                            body.append(byte)
-                            if body.count > 64_000 { break }
-                        }
-                        throw ProviderError.http(status: http.statusCode, message: Self.errorMessage(in: body))
-                    }
+                    try await ProviderHTTP.validate(response, bytes: bytes)
 
                     let decoder = JSONDecoder()
                     for try await line in bytes.lines {
@@ -95,42 +88,7 @@ struct OpenAICompatibleProvider: LLMProvider {
     }
 
     private func mapError(_ error: any Error, url: URL?) -> any Error {
-        guard let urlError = error as? URLError else { return error }
-        switch urlError.code {
-        case .cancelled:
-            return CancellationError()
-        case .cannotConnectToHost, .cannotFindHost, .networkConnectionLost, .notConnectedToInternet, .timedOut:
-            let root = url.flatMap(Self.origin) ?? baseURL()
-            return ProviderError.unreachable(provider: displayName, url: root)
-        default:
-            return urlError
-        }
-    }
-
-    /// `scheme://host[:port]` of a URL, for user-facing messages.
-    private static func origin(of url: URL) -> URL? {
-        var components = URLComponents()
-        components.scheme = url.scheme
-        components.host = url.host()
-        components.port = url.port
-        return components.url
-    }
-
-    private static func validate(_ response: URLResponse, body: Data) throws {
-        guard let http = response as? HTTPURLResponse else { throw ProviderError.invalidResponse }
-        guard (200..<300).contains(http.statusCode) else {
-            throw ProviderError.http(status: http.statusCode, message: errorMessage(in: body))
-        }
-    }
-
-    /// Extracts `{"error": {"message": …}}` or `{"error": "…"}` from an error body.
-    private static func errorMessage(in body: Data) -> String? {
-        guard let object = try? JSONSerialization.jsonObject(with: body) as? [String: Any] else {
-            let text = String(decoding: body, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
-            return text.isEmpty ? nil : text
-        }
-        if let error = object["error"] as? [String: Any] { return error["message"] as? String }
-        return object["error"] as? String
+        ProviderHTTP.mapError(error, provider: displayName, url: url, fallbackURL: baseURL())
     }
 }
 

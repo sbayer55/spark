@@ -31,12 +31,25 @@ struct ModelPicker: View {
                 Task { await store.refreshModels() }
             }
         } label: {
-            Label(title, systemImage: "sparkle")
-                .font(.callout)
+            // Drawn in SwiftUI (plain style, own chevron) so it follows the text size; the system menu
+            // button draws its label with AppKit and ignores the font.
+            HStack(spacing: 4) {
+                Label(title, systemImage: "sparkle")
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                Image(systemName: "chevron.down")
+                    .imageScale(.small)
+                    .fontWeight(.semibold)
+            }
+            .foregroundStyle(.tint)
+            .scaledFont(.callout, maxSize: TextSize.maxControlFontSize)
+            .contentShape(.rect)
         }
         .menuStyle(.button)
-        .buttonStyle(.borderless)
-        .fixedSize()
+        .buttonStyle(.plain)
+        .menuIndicator(.hidden)
+        // Truncates (rather than pushing the Research and Send buttons out) when the text size outgrows the panel.
+        .fixedSize(horizontal: false, vertical: true)
         .help("Choose a model")
     }
 

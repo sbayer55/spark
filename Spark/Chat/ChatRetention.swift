@@ -19,7 +19,8 @@ enum ChatRetention {
 
     /// Whether a chat whose panel has been closed for `elapsed` should be replaced by a new one.
     static func hasExpired(closedFor elapsed: Duration, defaults: UserDefaults = .standard) -> Bool {
-        let minutes = defaults.object(forKey: key) as? Int ?? defaultMinutes
+        // `integer(forKey:)` also parses strings, as launch arguments (`-chatRetentionMinutes 0`) arrive.
+        let minutes = defaults.object(forKey: key) == nil ? defaultMinutes : defaults.integer(forKey: key)
         guard minutes != forever else { return false }
         return elapsed >= .seconds(minutes * 60)
     }

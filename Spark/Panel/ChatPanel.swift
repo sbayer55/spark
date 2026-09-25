@@ -28,7 +28,7 @@ final class ChatPanel: NSPanel {
         isReleasedWhenClosed = false
         animationBehavior = .utilityWindow
 
-        // Fully transparent window; Liquid Glass in the SwiftUI content provides the visuals.
+        // Fully transparent window; the SwiftUI content draws the panel background.
         isOpaque = false
         backgroundColor = .clear
         hasShadow = false
