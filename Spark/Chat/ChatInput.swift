@@ -12,6 +12,7 @@ struct ChatInput: View {
             editor
             HStack {
                 ModelPicker(model: model)
+                researchToggle
                 Spacer()
                 actionButton.composerButtonStyle()
             }
@@ -41,13 +42,27 @@ struct ChatInput: View {
             }
             .overlay(alignment: .topLeading) {
                 if model.draft.isEmpty {
-                    Text("Ask anything…")
+                    Text(model.researchEnabled ? "Research anything…" : "Ask anything…")
                         .foregroundStyle(.tertiary)
                         .padding(.leading, 5)
                         .allowsHitTesting(false)
                 }
             }
             .scaledFont(size: 15)
+    }
+
+    /// Sticky per chat; disabled until a Brave Search API key is set in Settings.
+    private var researchToggle: some View {
+        Toggle(isOn: $model.researchEnabled) {
+            Label("Research", systemImage: "globe")
+        }
+        .toggleStyle(.button)
+        .controlSize(.small)
+        .font(.callout)
+        .disabled(!model.isResearchAvailable)
+        .help(model.isResearchAvailable
+              ? "Search the web and read pages before answering"
+              : "Add a Brave Search API key in Settings to enable Research")
     }
 
     @ViewBuilder

@@ -13,11 +13,16 @@ Native macOS menu bar app for quick AI chats across multiple LLM providers (Olla
   Add files by placing them under `Spark/`; add settings, entitlements, Info.plist keys, and SPM packages in `project.yml`.
 - **Writing Tools is disabled app-wide.** There's no global switch, so every window's root view applies
   `.writingToolsBehavior(.disabled)` (currently `ChatView` and `SettingsView`). New windows must do the same.
-- Dependencies via SPM declared in `project.yml`. Current: `sindresorhus/KeyboardShortcuts`.
+- Dependencies via SPM declared in `project.yml`. Current: `sindresorhus/KeyboardShortcuts`, `swiftlang/swift-markdown`,
+  `scinfu/SwiftSoup` (only `Spark/Research/PageReader.swift` may `import SwiftSoup`).
 - App Sandbox is on (with outgoing network client). `LSUIElement` is on (no Dock icon).
 - Chat state is in memory only (no persistence yet). A closed panel keeps its chat for the "Keep chat after closing"
   setting (`ChatRetention`, default 5 minutes); reopening after that starts a new chat.
   Settings (Ollama URL, last-picked model, retention, panel size, text size) live in `UserDefaults`.
+  The Brave Search API key lives in the Keychain (`Keychain.swift`, mirrored by `BraveSearchKey`), never in `UserDefaults`.
+- **Research mode** (composer toggle) runs `ResearchAgent` on top of the plain text-streaming provider interface:
+  plan queries (prompt-and-parse JSON) → Brave Search → read pages → optional follow-up round → cited answer.
+  Progress is reported as `ResearchEvent`s into the assistant `ChatMessage.research` state. No tool calling is used.
 - ATS allows plain HTTP only to local hosts (`NSAllowsLocalNetworking`).
 
 ## Build
@@ -34,6 +39,8 @@ xcodegen generate && xcodebuild -scheme Spark -destination 'platform=macOS' buil
   Only `MarkdownParser.swift` may `import Markdown`; its `Text`/`Link`/`Image`/`Table` types clash with SwiftUI.
 - `Spark/Providers`: `LLMProvider` protocol, `OpenAICompatibleProvider` (SSE client; Ollama uses it via `Ollama.swift`),
   `MockProvider` (Anthropic/Bifrost/9router until real clients land; see TODOs), `ProviderRegistry` (live model lists)
-- `Spark/Models`: `ChatMessage`
-- `Spark/Settings`: Settings window
+- `Spark/Models`: `ChatMessage`, `Research` (research steps, sources, events)
+- `Spark/Research`: `ResearchAgent` (orchestration), `ResearchPrompts`, `BraveSearchClient`, `PageReader` (SwiftSoup),
+  `BraveSearchKey` (Keychain-backed key store)
+- `Spark/Settings`: Settings window, `Keychain` helper
 - `Spark/Resources`: assets; `Info.plist` and entitlements are generated from `project.yml`

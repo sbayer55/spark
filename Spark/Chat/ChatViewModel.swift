@@ -5,9 +5,12 @@ import Observation
 @Observable
 final class ChatViewModel {
     let registry: ProviderRegistry
+    let braveKey: BraveSearchKey
 
     var messages: [ChatMessage] = []
     var draft = ""
+    /// Whether the next send runs deep research (web search + reading) before answering. Sticky per chat.
+    var researchEnabled = false
     private(set) var selection: ModelSelection?
 
     /// Incremented to ask the input field to take focus (e.g. when the panel opens).
@@ -22,6 +25,9 @@ final class ChatViewModel {
     var canSend: Bool {
         !isStreaming && selection != nil && !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
+
+    /// Research needs a Brave Search API key (entered in Settings).
+    var isResearchAvailable: Bool { braveKey.hasKey }
 
     /// The model the user last picked explicitly; restored whenever it's available.
     @ObservationIgnored private var preferredSelection: ModelSelection? {
@@ -40,8 +46,9 @@ final class ChatViewModel {
     private static let providerKey = "selectedProviderID"
     private static let modelKey = "selectedModel"
 
-    init(registry: ProviderRegistry = ProviderRegistry()) {
+    init(registry: ProviderRegistry = ProviderRegistry(), braveKey: BraveSearchKey = BraveSearchKey()) {
         self.registry = registry
+        self.braveKey = braveKey
         self.selection = preferredSelection
     }
 
@@ -70,14 +77,25 @@ final class ChatViewModel {
         messages.append(ChatMessage(role: .user, content: text))
         let history = messages
 
-        let reply = ChatMessage(role: .assistant, content: "", status: .streaming)
+        let research = researchEnabled && isResearchAvailable
+        let reply = ChatMessage(role: .assistant, content: "", status: .streaming,
+                                research: research ? ResearchState() : nil)
         messages.append(reply)
         streamingMessageID = reply.id
+        let apiKey = braveKey.value
 
         streamTask = Task { [weak self] in
             do {
-                for try await chunk in provider.stream(messages: history, model: selection.model) {
-                    self?.append(chunk, to: reply.id)
+                if research {
+                    let agent = ResearchAgent(provider: provider, model: selection.model,
+                                              search: BraveSearchClient(apiKey: apiKey), reader: PageReader())
+                    for try await event in agent.run(history: history) {
+                        self?.apply(event, to: reply.id)
+                    }
+                } else {
+                    for try await chunk in provider.stream(messages: history, model: selection.model) {
+                        self?.append(chunk, to: reply.id)
+                    }
                 }
                 self?.finish(reply.id, status: Task.isCancelled ? .cancelled : .complete)
             } catch is CancellationError {
@@ -104,6 +122,7 @@ final class ChatViewModel {
         cancelStreaming()
         messages.removeAll()
         draft = ""
+        researchEnabled = false
         requestFocus()
     }
 
@@ -116,10 +135,33 @@ final class ChatViewModel {
         messages[index].content += chunk
     }
 
+    private func apply(_ event: ResearchEvent, to id: UUID) {
+        guard streamingMessageID == id, let index = messages.firstIndex(where: { $0.id == id }) else { return }
+        switch event {
+        case .stepStarted(let step):
+            messages[index].research?.steps.append(step)
+        case .stepFinished(let stepID, let status):
+            if let stepIndex = messages[index].research?.steps.firstIndex(where: { $0.id == stepID }) {
+                messages[index].research?.steps[stepIndex].status = status
+            }
+        case .sources(let sources):
+            messages[index].research?.sources = sources
+        case .answer(let chunk):
+            messages[index].content += chunk
+        }
+    }
+
     private func finish(_ id: UUID, status: ChatMessage.Status) {
         guard streamingMessageID == id else { return }
         if let index = messages.firstIndex(where: { $0.id == id }) {
             messages[index].status = status
+            // A stopped or failed research run leaves no step spinning.
+            if status != .complete, var research = messages[index].research {
+                for stepIndex in research.steps.indices where research.steps[stepIndex].status == .running {
+                    research.steps[stepIndex].status = .cancelled
+                }
+                messages[index].research = research
+            }
         }
         streamingMessageID = nil
         streamTask = nil

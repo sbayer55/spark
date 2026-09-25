@@ -43,3 +43,14 @@ enum ProviderError: LocalizedError {
         }
     }
 }
+
+extension LLMProvider {
+    /// Collects a whole reply, for prompt-and-parse steps that need the full text (e.g. a JSON plan).
+    func complete(messages: [ChatMessage], model: String) async throws -> String {
+        var text = ""
+        for try await chunk in stream(messages: messages, model: model) {
+            text += chunk
+        }
+        return text
+    }
+}

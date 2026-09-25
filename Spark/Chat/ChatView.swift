@@ -61,8 +61,12 @@ struct ChatView: View {
         }
     }
 
-    /// Changes whenever a message is added or the streaming message grows.
+    /// Changes whenever a message is added, the streaming message grows, or a research step updates.
     private var scrollTrigger: Int {
-        model.messages.count &* 1_000_003 &+ (model.messages.last?.content.count ?? 0)
+        var hasher = Hasher()
+        hasher.combine(model.messages.count)
+        hasher.combine(model.messages.last?.content.count ?? 0)
+        hasher.combine(model.messages.last?.research)
+        return hasher.finalize()
     }
 }
