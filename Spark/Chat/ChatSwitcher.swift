@@ -41,7 +41,7 @@ struct ChatSwitcher: View {
                 .padding(.bottom, 2)
         }
         .padding(8)
-        .glassEffect(.themed(theme), in: .rect(cornerRadius: 18, style: .continuous))
+        .panelGlass(cornerRadius: 18)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Switch Chat")
     }

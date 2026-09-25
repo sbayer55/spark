@@ -12,7 +12,11 @@ struct SettingsView: View {
                 GeneralSettingsView(store: store)
             }
             Tab("Appearance", systemImage: "paintpalette") {
-                ThemePicker()
+                VStack(spacing: 0) {
+                    GlassSettingsView()
+                    Divider()
+                    ThemePicker()
+                }
             }
         }
         .environment(\.theme, theme)
@@ -67,5 +71,32 @@ private struct GeneralSettingsView: View {
         .scrollContentBackground(theme == nil ? .automatic : .hidden)
         .frame(width: 420)
         .fixedSize()
+    }
+}
+
+/// The panel's glass transparency and background blur, above the theme grid on the Appearance tab.
+private struct GlassSettingsView: View {
+    @AppStorage(PanelAppearance.transparencyKey) private var transparency = PanelAppearance.defaultTransparency
+    @AppStorage(PanelAppearance.blurKey) private var blur = PanelAppearance.defaultBlur
+
+    var body: some View {
+        HStack(spacing: 24) {
+            Slider(value: $transparency, in: 0...1) {
+                Text("Transparency:")
+            } minimumValueLabel: {
+                Text("Solid")
+            } maximumValueLabel: {
+                Text("Glass")
+            }
+            Picker("Background blur:", selection: $blur) {
+                ForEach(PanelAppearance.Blur.allCases) { blur in
+                    Text(blur.label).tag(blur)
+                }
+            }
+            .pickerStyle(.segmented)
+            .fixedSize()
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
     }
 }

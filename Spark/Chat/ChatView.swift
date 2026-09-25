@@ -26,14 +26,14 @@ struct ChatView: View {
                     if !chat.messages.isEmpty {
                         messageList(for: chat, fillsHeight: fillsHeight)
                             .id(chat.id)
-                            .glassEffect(.themed(theme), in: .rect(cornerRadius: 22, style: .continuous))
+                            .panelGlass(cornerRadius: 22)
                             .transition(.opacity)
                     } else if fillsHeight {
                         // No empty glass for a new chat; keep the composer at the bottom of the fixed-height panel.
                         Spacer(minLength: 0)
                     }
                     ChatInput(store: store, chat: chat)
-                        .glassEffect(.themed(theme), in: .rect(cornerRadius: 22, style: .continuous))
+                        .panelGlass(cornerRadius: 22)
                 }
             }
             .blur(radius: isSwitching ? 3 : 0)

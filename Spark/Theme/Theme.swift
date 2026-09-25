@@ -97,10 +97,10 @@ extension EnvironmentValues {
 }
 
 extension Glass {
-    /// Regular glass, tinted with the theme's background so the panel takes on its color.
-    static func themed(_ theme: Theme?) -> Glass {
-        guard let theme else { return .regular }
-        return .regular.tint(theme.background.opacity(0.88))
+    /// `base` glass (regular by default), tinted with the theme's background so the panel takes on its color.
+    static func themed(_ theme: Theme?, base: Glass = .regular) -> Glass {
+        guard let theme else { return base }
+        return base.tint(theme.background.opacity(0.88))
     }
 }
 
