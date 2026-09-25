@@ -2,11 +2,36 @@ import KeyboardShortcuts
 import SwiftUI
 
 struct SettingsView: View {
+    let braveKey: BraveSearchKey
+    @AppStorage(Theme.key) private var themeID = Theme.systemID
+
+    var body: some View {
+        let theme = Theme.named(themeID)
+        TabView {
+            Tab("General", systemImage: "gearshape") {
+                GeneralSettingsView(braveKey: braveKey)
+            }
+            Tab("Appearance", systemImage: "paintpalette") {
+                VStack(spacing: 0) {
+                    GlassSettingsView()
+                    Divider()
+                    ThemePicker()
+                }
+            }
+        }
+        .environment(\.theme, theme)
+        .themeStyle(theme)
+        .preferredColorScheme(theme.map { $0.isDark ? .dark : .light })
+        .containerBackground(theme.map { AnyShapeStyle($0.background) } ?? AnyShapeStyle(.windowBackground), for: .window)
+        .writingToolsBehavior(.disabled)
+    }
+}
+
+private struct GeneralSettingsView: View {
     @Bindable var braveKey: BraveSearchKey
     @AppStorage(Ollama.baseURLKey) private var ollamaURL = Ollama.defaultBaseURL
     @AppStorage(ChatRetention.key) private var retentionMinutes = ChatRetention.defaultMinutes
-    @AppStorage(PanelAppearance.transparencyKey) private var transparency = PanelAppearance.defaultTransparency
-    @AppStorage(PanelAppearance.blurKey) private var blur = PanelAppearance.defaultBlur
+    @Environment(\.theme) private var theme
 
     var body: some View {
         Form {
@@ -22,21 +47,6 @@ struct SettingsView: View {
             } footer: {
                 Text("When you reopen Spark after this long, it starts a new chat.")
                     .foregroundStyle(.secondary)
-            }
-            Section("Appearance") {
-                Slider(value: $transparency, in: 0...1) {
-                    Text("Transparency:")
-                } minimumValueLabel: {
-                    Text("Solid")
-                } maximumValueLabel: {
-                    Text("Glass")
-                }
-                Picker("Background blur:", selection: $blur) {
-                    ForEach(PanelAppearance.Blur.allCases) { blur in
-                        Text(blur.label).tag(blur)
-                    }
-                }
-                .pickerStyle(.segmented)
             }
             Section("Ollama") {
                 TextField("Server URL", text: $ollamaURL, prompt: Text(Ollama.defaultBaseURL))
@@ -55,8 +65,36 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .writingToolsBehavior(.disabled)
+        // Let the theme's window background show through.
+        .scrollContentBackground(theme == nil ? .automatic : .hidden)
         .frame(width: 420)
         .fixedSize()
+    }
+}
+
+/// The panel's glass transparency and background blur, above the theme grid on the Appearance tab.
+private struct GlassSettingsView: View {
+    @AppStorage(PanelAppearance.transparencyKey) private var transparency = PanelAppearance.defaultTransparency
+    @AppStorage(PanelAppearance.blurKey) private var blur = PanelAppearance.defaultBlur
+
+    var body: some View {
+        HStack(spacing: 24) {
+            Slider(value: $transparency, in: 0...1) {
+                Text("Transparency:")
+            } minimumValueLabel: {
+                Text("Solid")
+            } maximumValueLabel: {
+                Text("Glass")
+            }
+            Picker("Background blur:", selection: $blur) {
+                ForEach(PanelAppearance.Blur.allCases) { blur in
+                    Text(blur.label).tag(blur)
+                }
+            }
+            .pickerStyle(.segmented)
+            .fixedSize()
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
     }
 }

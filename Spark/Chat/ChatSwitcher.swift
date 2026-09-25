@@ -5,6 +5,7 @@ import SwiftUI
 /// Key handling lives in `PanelController`; this view only draws `ChatStore`'s state.
 struct ChatSwitcher: View {
     let store: ChatStore
+    @Environment(\.theme) private var theme
 
     @State private var rowsHeight: CGFloat = 0
 
@@ -60,7 +61,7 @@ struct ChatSwitcher: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
-            .foregroundStyle(isHighlighted ? AnyShapeStyle(.white) : AnyShapeStyle(.primary))
+            .foregroundStyle(isHighlighted ? highlightedText : AnyShapeStyle(.primary))
             .padding(.horizontal, 10)
             .frame(height: 32)
             .background(isHighlighted ? AnyShapeStyle(.tint) : AnyShapeStyle(.clear),
@@ -77,10 +78,15 @@ struct ChatSwitcher: View {
                 .controlSize(.mini)
         } else if chat.hasUnreadReply {
             Circle()
-                .fill(isHighlighted ? AnyShapeStyle(.white) : AnyShapeStyle(.tint))
+                .fill(isHighlighted ? highlightedText : AnyShapeStyle(.tint))
                 .frame(width: 7, height: 7)
                 .accessibilityLabel("Unread reply")
         }
+    }
+
+    /// Text on the tint-filled highlight: the theme's background contrasts with its accent; white suits the system accent.
+    private var highlightedText: AnyShapeStyle {
+        AnyShapeStyle(theme?.background ?? .white)
     }
 
     private func detail(for chat: ChatViewModel) -> String {

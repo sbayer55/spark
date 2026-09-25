@@ -71,6 +71,7 @@ private struct CodeBlockView: View {
     let code: String
 
     @State private var copied = false
+    @Environment(\.theme) private var theme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -96,7 +97,8 @@ private struct CodeBlockView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.primary.opacity(0.06), in: .rect(cornerRadius: 10, style: .continuous))
+        .background(theme.map { AnyShapeStyle($0.surface) } ?? AnyShapeStyle(.primary.opacity(0.06)),
+                    in: .rect(cornerRadius: 10, style: .continuous))
     }
 
     private func copy() {

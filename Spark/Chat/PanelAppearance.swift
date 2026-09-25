@@ -4,7 +4,7 @@ import SwiftUI
 ///
 /// Liquid Glass has no blur radius or opacity knobs, so the two settings map onto what it does offer:
 /// blur picks the glass variant (`.regular` frosts what's behind the panel, `.clear` barely does), and
-/// transparency fades in a solid window-background fill over the glass.
+/// transparency fades in a solid fill (the theme's background, or the window background) over the glass.
 enum PanelAppearance {
     enum Blur: String, CaseIterable, Identifiable {
         case frosted, clear
@@ -35,7 +35,8 @@ enum PanelAppearance {
 }
 
 extension View {
-    /// Puts the view on Liquid Glass in a rounded rect, styled by the user's `PanelAppearance` settings.
+    /// Puts the view on Liquid Glass in a rounded rect, styled by the user's `PanelAppearance` settings
+    /// and the environment's theme.
     func panelGlass(cornerRadius: CGFloat) -> some View {
         modifier(PanelGlass(cornerRadius: cornerRadius))
     }
@@ -44,12 +45,14 @@ extension View {
 private struct PanelGlass: ViewModifier {
     @AppStorage(PanelAppearance.transparencyKey) private var transparency = PanelAppearance.defaultTransparency
     @AppStorage(PanelAppearance.blurKey) private var blur = PanelAppearance.defaultBlur
+    @Environment(\.theme) private var theme
     let cornerRadius: CGFloat
 
     func body(content: Content) -> some View {
         let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        let fill = theme?.background ?? Color(nsColor: .windowBackgroundColor)
         content
-            .background(Color(nsColor: .windowBackgroundColor).opacity(1 - transparency), in: shape)
-            .glassEffect(blur.glass, in: shape)
+            .background(fill.opacity(1 - transparency), in: shape)
+            .glassEffect(.themed(theme, base: blur.glass), in: shape)
     }
 }

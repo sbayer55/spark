@@ -7,6 +7,7 @@ struct ResearchProgressView: View {
     let isRunning: Bool
 
     @State private var isExpanded = true
+    @Environment(\.theme) private var theme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -40,7 +41,8 @@ struct ResearchProgressView: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.primary.opacity(0.05), in: .rect(cornerRadius: 10, style: .continuous))
+        .background(theme.map { AnyShapeStyle($0.surface) } ?? AnyShapeStyle(.primary.opacity(0.05)),
+                    in: .rect(cornerRadius: 10, style: .continuous))
         .onChange(of: isRunning) { _, running in
             if !running {
                 withAnimation(.snappy) { isExpanded = false }
@@ -58,6 +60,7 @@ struct ResearchProgressView: View {
 
 private struct StepRow: View {
     let step: ResearchStep
+    @Environment(\.theme) private var theme
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
@@ -80,7 +83,7 @@ private struct StepRow: View {
                 .controlSize(.mini)
         case .done:
             Image(systemName: "checkmark.circle.fill")
-                .foregroundStyle(.green)
+                .foregroundStyle(theme?.green ?? .green)
         case .failed:
             Image(systemName: "xmark.circle")
         case .cancelled:

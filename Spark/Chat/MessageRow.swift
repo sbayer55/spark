@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MessageRow: View {
     let message: ChatMessage
+    @Environment(\.theme) private var theme
 
     var body: some View {
         switch message.role {
@@ -46,7 +47,7 @@ struct MessageRow: View {
         case .failed(let reason):
             Label(reason, systemImage: "exclamationmark.triangle")
                 .scaledFont(.caption)
-                .foregroundStyle(.red)
+                .foregroundStyle(theme?.red ?? .red)
         case .complete, .streaming:
             EmptyView()
         }
