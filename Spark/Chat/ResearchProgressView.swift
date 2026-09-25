@@ -111,6 +111,7 @@ struct ResearchSourcesView: View {
                         .monospacedDigit()
                         .foregroundStyle(.secondary)
                     Link(source.title, destination: source.url)
+                        .underline()
                         .lineLimit(1)
                         .truncationMode(.tail)
                     Text(source.host)

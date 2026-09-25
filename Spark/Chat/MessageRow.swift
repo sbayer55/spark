@@ -24,7 +24,7 @@ struct MessageRow: View {
                     ProgressView()
                         .controlSize(.small)
                 } else if !message.content.isEmpty || message.research == nil {
-                    MarkdownView(text: message.content)
+                    MarkdownView(text: message.content, citations: citations)
                 }
                 if let research = message.research, message.status != .streaming, !research.sources.isEmpty {
                     ResearchSourcesView(sources: research.sources)
@@ -35,6 +35,11 @@ struct MessageRow: View {
         case .system:
             EmptyView()
         }
+    }
+
+    /// Research source URLs by citation number, so `[n]` in the reply links to its source.
+    private var citations: [Int: URL] {
+        Dictionary((message.research?.sources ?? []).map { ($0.id, $0.url) }, uniquingKeysWith: { first, _ in first })
     }
 
     @ViewBuilder
