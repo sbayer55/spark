@@ -89,3 +89,52 @@ jobs:
         with:
           name: build-log-${{ matrix.configuration }}
           path: build.log
+
+  # Every merge to main replaces the rolling `latest-main` prerelease with a fresh DMG.
+  # Versioned releases still come from `v*` tags (release.yml).
+  dmg:
+    name: Publish latest-main DMG
+    needs: [secrets, build]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: macos-26
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Install XcodeGen and just
+        run: brew install xcodegen just
+
+      # Ad-hoc signed and not notarized, like the tagged releases.
+      - name: Build DMG
+        run: just dmg
+
+      - name: Checksum
+        run: |
+          cd build
+          shasum -a 256 Spark-*.dmg | tee SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Spark-dmg
+          path: |
+            build/Spark-*.dmg
+            build/SHA256SUMS.txt
+
+      - name: Publish latest-main prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete latest-main --yes --cleanup-tag || true
+          gh release create latest-main \
+            build/Spark-*.dmg build/SHA256SUMS.txt \
+            --target "$GITHUB_SHA" \
+            --prerelease \
+            --latest=false \
+            --title "Spark latest main (${GITHUB_SHA::7})" \
+            --notes "Built from ${GITHUB_SHA} on main. Ad-hoc signed and not notarized: on first launch, right-click Spark and choose Open."
