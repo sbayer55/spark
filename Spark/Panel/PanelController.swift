@@ -7,6 +7,7 @@ final class PanelController {
     let store: ChatStore
     let layout: PanelLayout
     private let panel: ChatPanel
+    private let resizeOverlay: PanelResizeOverlay
 
     /// When the panel was last hidden; `nil` while it's showing. Continuous clock, so time asleep counts.
     private var hiddenAt: ContinuousClock.Instant?
@@ -14,17 +15,23 @@ final class PanelController {
     /// The in-progress user resize: which edge or corner, and the frame and mouse location it started from.
     private var resizeStart: (position: NSCursor.FrameResizePosition, frame: NSRect, mouse: NSPoint)?
 
+    /// SwiftUI's action for opening the Settings scene, supplied by the hosted `ChatView`.
+    private var openSettingsAction: OpenSettingsAction?
+
     init(store: ChatStore = ChatStore(), layout: PanelLayout = PanelLayout()) {
         self.store = store
         self.layout = layout
         panel = ChatPanel(contentRect: NSRect(x: 0, y: 0, width: layout.width, height: layout.fixedHeight ?? 120))
+        resizeOverlay = PanelResizeOverlay(inset: PanelMetrics.inset, cornerRadius: PanelMetrics.cornerRadius)
 
-        let hostingView = NSHostingView(rootView: ChatView(store: store, layout: layout) { [weak self] height in
-            self?.resize(toContentHeight: height)
-        })
+        let hostingView = NSHostingView(rootView: ChatView(
+            store: store,
+            layout: layout,
+            onHeightChange: { [weak self] height in self?.resize(toContentHeight: height) },
+            onOpenSettingsAction: { [weak self] action in self?.openSettingsAction = action }
+        ))
         hostingView.sizingOptions = []
 
-        let resizeOverlay = PanelResizeOverlay(inset: PanelMetrics.inset)
         resizeOverlay.onBegin = { [weak self] position in self?.beginResize(from: position) }
         resizeOverlay.onDrag = { [weak self] in self?.continueResize() }
         resizeOverlay.onEnd = { [weak self] in self?.endResize() }
@@ -44,14 +51,26 @@ final class PanelController {
         panel.onResignKey = { [weak self] in self?.store.cancelSwitcher() }
 
         applyThemeAppearance()
+        applyGaussianBlur()
         NotificationCenter.default.addObserver(
             forName: UserDefaults.didChangeNotification, object: nil, queue: .main
         ) { [weak self] _ in
-            MainActor.assumeIsolated { self?.applyThemeAppearance() }
+            MainActor.assumeIsolated {
+                self?.applyThemeAppearance()
+                self?.applyGaussianBlur()
+            }
         }
     }
 
-    /// Matches the panel's appearance to the theme's light or dark background, so the glass, menus, and
+    /// Sets the window server's Gaussian background blur from the appearance settings (0 turns it off).
+    /// While it's on, the resize overlay stops painting outside the panel so that margin isn't blurred too.
+    private func applyGaussianBlur() {
+        let radius = PanelAppearance.gaussianRadius()
+        SkyLight.setBackgroundBlur(radius: radius, for: panel)
+        resizeOverlay.paintsOutsidePanel = radius == 0
+    }
+
+    /// Matches the panel's appearance to the theme's light or dark background, so the blur, menus, and
     /// system controls agree with it. The system look (no theme) follows the system appearance.
     private func applyThemeAppearance() {
         let name: NSAppearance.Name? = Theme.current().map { $0.isDark ? .darkAqua : .aqua }
@@ -76,6 +95,7 @@ final class PanelController {
         }
         hiddenAt = nil
         panel.makeKeyAndOrderFront(nil)
+        applyGaussianBlur()
         store.requestFocus()
         // Cheap local call; picks up models pulled or servers started since last open.
         Task { await store.refreshModels() }
@@ -104,6 +124,16 @@ final class PanelController {
         // The content re-reports its natural height once it stops filling the fixed height.
     }
 
+    /// Closes the panel and brings the Settings window to the front.
+    func openSettings() {
+        // Menu bar (LSUIElement) apps must activate first or the window opens behind other apps. The panel is
+        // non-activating, so another app is still active here and it ignores the cooperative `NSApp.activate()`
+        // (Settings opened behind it when tested). `ignoringOtherApps:` is marked "to be deprecated" but still works.
+        NSApp.activate(ignoringOtherApps: true)
+        openSettingsAction?()
+        hide()
+    }
+
     private func handleEscape() {
         if !store.active.cancelStreaming() {
             hide()
@@ -112,7 +142,7 @@ final class PanelController {
 
     // MARK: - Chat keys
 
-    /// ⌘N / ⌘W, and the ⌃Tab switcher: hold ⌃ and press Tab (⇧Tab backward) to move, release ⌃ to switch.
+    /// ⌘N / ⌘W / ⌘, (Settings), and the ⌃Tab switcher: hold ⌃ and press Tab (⇧Tab backward) to move, release ⌃ to switch.
     /// While the switcher is open it takes every key: arrows move, Return switches, Escape cancels.
     private func handleKey(_ event: NSEvent) -> Bool {
         let modifiers = event.modifierFlags.intersection([.command, .option, .control, .shift])
@@ -145,6 +175,7 @@ final class PanelController {
             switch event.charactersIgnoringModifiers {
             case "n": store.newChat(); return true
             case "w": store.closeActiveChat(); return true
+            case ",": openSettings(); return true
             default: break
             }
         }

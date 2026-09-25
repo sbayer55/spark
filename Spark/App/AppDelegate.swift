@@ -14,6 +14,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.panelController.toggle()
         }
         startAvailabilityChecks()
+        if LaunchOptions.showPanelOnLaunch {
+            panelController.show()
+        }
 
         // Networks and local servers often change across sleep; re-check right away on wake.
         NSWorkspace.shared.notificationCenter.addObserver(

@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// A color theme for the chat panel, persisted in `UserDefaults` by `id`.
-/// No theme (`Theme.systemID`) keeps the default Liquid Glass look that follows the system appearance.
+/// No theme (`Theme.systemID`) keeps the default frosted look that follows the system appearance.
 struct Theme: Identifiable, Sendable {
     enum Category: String, CaseIterable, Identifiable, Sendable {
         case warm = "Warm & Retro"
@@ -19,7 +19,7 @@ struct Theme: Identifiable, Sendable {
     let category: Category
     let isDark: Bool
 
-    /// Tints the panel's glass.
+    /// The panel's fill.
     let background: Color
     /// Code blocks and other raised content.
     let surface: Color
@@ -94,14 +94,6 @@ extension Color {
 extension EnvironmentValues {
     /// The chat panel's theme; `nil` for the system look.
     @Entry var theme: Theme? = nil
-}
-
-extension Glass {
-    /// `base` glass (regular by default), tinted with the theme's background so the panel takes on its color.
-    static func themed(_ theme: Theme?, base: Glass = .regular) -> Glass {
-        guard let theme else { return base }
-        return base.tint(theme.background.opacity(0.88))
-    }
 }
 
 extension View {

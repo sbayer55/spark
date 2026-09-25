@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The Appearance settings tab: a grid of theme cards, each previewing the chat panel in that theme's colors.
+/// The Appearance settings category: a grid of theme cards, each previewing the chat panel in that theme's colors.
 struct ThemePicker: View {
     private enum Filter: String, CaseIterable, Identifiable {
         case all = "All", light = "Light", dark = "Dark"
@@ -64,7 +64,7 @@ struct ThemePicker: View {
                 .onAppear { proxy.scrollTo(themeID, anchor: .center) }
             }
         }
-        .frame(width: 640, height: 580)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private func header(_ title: String) -> some View {
@@ -176,7 +176,7 @@ private struct ThemePreview: View {
         .padding(9)
     }
 
-    /// The default look: Liquid Glass over a colorful backdrop, with system colors.
+    /// The default look: the flat frosted panel over a colorful backdrop, with system colors.
     private var systemBackdrop: some View {
         LinearGradient(colors: [.blue, .purple, .pink], startPoint: .topLeading, endPoint: .bottomTrailing)
             .overlay {
@@ -193,7 +193,7 @@ private struct ThemePreview: View {
                     Spacer(minLength: 0)
                 }
                 .padding(9)
-                .glassEffect(.regular, in: .rect(cornerRadius: 8, style: .continuous))
+                .background(.regularMaterial, in: .rect(cornerRadius: 8))
                 .padding(8)
             }
     }

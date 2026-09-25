@@ -2,9 +2,9 @@ import AppKit
 
 /// Edge and corner resize handles for the borderless chat panel.
 ///
-/// The window is transparent around the glass, and macOS passes clicks on fully transparent
+/// The window is transparent around the panel background, and macOS passes clicks on fully transparent
 /// pixels through to the app behind, so native edge resizing doesn't work. This view sits
-/// above the SwiftUI content, claims only thin bands straddling the glass edges (painted with
+/// above the SwiftUI content, claims only thin bands straddling the panel edges (painted with
 /// a nearly invisible fill so the window server delivers the clicks here), and forwards
 /// drags to its owner. Everywhere else, `hitTest` returns `nil` so events reach SwiftUI.
 final class PanelResizeOverlay: NSView {
@@ -14,9 +14,16 @@ final class PanelResizeOverlay: NSView {
     var onDrag: (() -> Void)?
     var onEnd: (() -> Void)?
 
-    /// Distance from the window edge to the glass edge.
+    /// Whether the hit zones are painted where they extend outside the panel. Turned off while the window
+    /// server's Gaussian blur is on, since it would blur those bands too; edges can then be grabbed from inside only.
+    var paintsOutsidePanel = true {
+        didSet { if paintsOutsidePanel != oldValue { needsDisplay = true } }
+    }
+
+    /// Distance from the window edge to the panel edge.
     private let inset: CGFloat
-    /// How far each band extends outside and inside the glass edge, and how far corner zones reach inward.
+    private let cornerRadius: CGFloat
+    /// How far each band extends outside and inside the panel edge, and how far corner zones reach inward.
     private let outside: CGFloat = 6
     private let inside: CGFloat = 3
     private let cornerReach: CGFloat = 14
@@ -24,8 +31,9 @@ final class PanelResizeOverlay: NSView {
     private var hoveredPosition: Position?
     private var activePosition: Position?
 
-    init(inset: CGFloat) {
+    init(inset: CGFloat, cornerRadius: CGFloat) {
         self.inset = inset
+        self.cornerRadius = cornerRadius
         super.init(frame: .zero)
     }
 
@@ -42,6 +50,10 @@ final class PanelResizeOverlay: NSView {
     override func draw(_ dirtyRect: NSRect) {
         // Alpha must be non-zero for the window server to route clicks to this window.
         NSColor.black.withAlphaComponent(0.02).setFill()
+        if !paintsOutsidePanel {
+            let panel = bounds.insetBy(dx: inset, dy: inset)
+            NSBezierPath(roundedRect: panel, xRadius: cornerRadius, yRadius: cornerRadius).addClip()
+        }
         for (_, rect) in zones() { rect.fill() }
     }
 

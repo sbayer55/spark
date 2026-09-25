@@ -1,12 +1,16 @@
 import SwiftUI
 
-/// Root view hosted in the chat panel: the active chat's message list and composer, each on Liquid Glass,
+/// Root view hosted in the chat panel: the active chat's message list and composer on a single flat panel,
 /// with the ⌃Tab switcher over them while it's open.
 struct ChatView: View {
     let store: ChatStore
     let layout: PanelLayout
     /// Reports the view's natural height so the panel can size itself to fit (only while the height isn't fixed).
     var onHeightChange: (CGFloat) -> Void = { _ in }
+    /// Hands over SwiftUI's `openSettings` action so the AppKit panel can open Settings (⌘,).
+    var onOpenSettingsAction: (OpenSettingsAction) -> Void = { _ in }
+
+    @Environment(\.openSettings) private var openSettings
 
     @State private var listContentHeight: CGFloat = 0
     @AppStorage(TextSize.key) private var textScale = TextSize.defaultScale
@@ -21,21 +25,21 @@ struct ChatView: View {
 
         // A ZStack so the panel grows to fit the switcher when it's taller than the chat.
         ZStack(alignment: .top) {
-            GlassEffectContainer(spacing: 10) {
-                VStack(spacing: 10) {
-                    if !chat.messages.isEmpty {
-                        messageList(for: chat, fillsHeight: fillsHeight)
-                            .id(chat.id)
-                            .panelGlass(cornerRadius: 22)
-                            .transition(.opacity)
-                    } else if fillsHeight {
-                        // No empty glass for a new chat; keep the composer at the bottom of the fixed-height panel.
-                        Spacer(minLength: 0)
-                    }
-                    ChatInput(store: store, chat: chat)
-                        .panelGlass(cornerRadius: 22)
+            // One flat panel: the message list and composer share a single background.
+            VStack(spacing: 0) {
+                if !chat.messages.isEmpty {
+                    messageList(for: chat, fillsHeight: fillsHeight)
+                        .id(chat.id)
+                        .transition(.opacity)
+                    Divider()
+                        .padding(.horizontal, 14)
+                } else if fillsHeight {
+                    // Keep the composer at the bottom of the fixed-height panel.
+                    Spacer(minLength: 0)
                 }
+                ChatInput(store: store, chat: chat)
             }
+            .panelBackground(cornerRadius: PanelMetrics.cornerRadius)
             .blur(radius: isSwitching ? 3 : 0)
             .opacity(isSwitching ? 0.5 : 1)
             .overlay {
@@ -63,6 +67,7 @@ struct ChatView: View {
             if !layout.isHeightFixed { onHeightChange(height) }
         }
         .frame(maxHeight: .infinity, alignment: .top)
+        .onAppear { onOpenSettingsAction(openSettings) }
     }
 
     private func messageList(for chat: ChatViewModel, fillsHeight: Bool) -> some View {
