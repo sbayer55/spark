@@ -37,10 +37,12 @@ xcodebuild -scheme Spark -destination 'platform=macOS' -derivedDataPath build bu
 open build/Build/Products/Debug/Spark.app --args -SparkEphemeralSecrets YES
 ```
 
+Or with [just](https://github.com/casey/just): `just run` builds and relaunches (extra arguments go to the app, e.g. `just run -SparkEphemeralSecrets YES`), `just check` builds and fails on warnings like CI, `just dmg` makes an installer disk image in `build/`, and `just` lists every recipe.
+
 Spark has no Dock icon. Look for the ✦ sparkle in the menu bar.
 
 ## CI & releases
-- **CI** (`.github/workflows/ci.yml`) builds Debug and Release on every push to `main` and every PR, and fails if the build emits any warnings. It also runs a TruffleHog scan for leaked secrets in the pushed commits.
+- **CI** (`.github/workflows/ci.yml`) builds Debug and Release on every push to `main` and every PR, and fails if the build emits any warnings. It also runs a TruffleHog scan for leaked secrets in the pushed commits. After a push to `main` passes, it builds an installer DMG (`just dmg`) and publishes it to the rolling `latest-main` prerelease, replacing the previous one.
 - **Release** (`.github/workflows/release.yml`) runs when you push a `v*` tag. It archives the app and attaches an ad-hoc-signed `Spark-<version>.zip` to a GitHub release. The tag has to match `CFBundleShortVersionString` in `project.yml` (for example, `v0.1.0`). The build isn't notarized, so on first launch, right-click the app and choose **Open**.
 - **Dependabot** keeps the GitHub Actions versions up to date.
 
