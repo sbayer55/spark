@@ -4,11 +4,48 @@ import SwiftUI
 /// Renders markdown source as native SwiftUI views.
 struct MarkdownView: View {
     let text: String
+    /// Citation targets by number: each `[n]` in the text links to `citations[n]` (research replies).
+    var citations: [Int: URL] = [:]
+
+    @Environment(\.theme) private var theme
 
     var body: some View {
-        MarkdownBlocksView(blocks: MarkdownParser.blocks(from: text))
-            .scaledFont(.body)
-            .textSelection(.enabled)
+        let linkColor = theme?.accent ?? .accentColor
+        MarkdownBlocksView(blocks: MarkdownParser.blocks(from: text).map { block in
+            block.mapInlines { $0.linkingCitations(citations).styledLinks(color: linkColor) }
+        })
+        .scaledFont(.body)
+        .textSelection(.enabled)
+    }
+}
+
+private extension AttributedString {
+    /// Turns each `[n]` with a known citation into a link to that source, outside code and existing links.
+    func linkingCitations(_ citations: [Int: URL]) -> AttributedString {
+        guard !citations.isEmpty else { return self }
+        var result = self
+        let text = String(characters)
+        for match in text.matches(of: /\[(\d+)\]/) {
+            guard let number = Int(match.1), let url = citations[number] else { continue }
+            let lower = result.characters.index(result.startIndex,
+                                                offsetBy: text.distance(from: text.startIndex, to: match.range.lowerBound))
+            let upper = result.characters.index(lower, offsetBy: text[match.range].count)
+            let isPlain = result[lower..<upper].runs.allSatisfy { run in
+                run.link == nil && !(run.inlinePresentationIntent?.contains(.code) ?? false)
+            }
+            if isPlain { result[lower..<upper].link = url }
+        }
+        return result
+    }
+
+    /// Colors and underlines every link so it reads as one.
+    func styledLinks(color: Color) -> AttributedString {
+        var result = self
+        for (link, range) in runs[\.link] where link != nil {
+            result[range].foregroundColor = color
+            result[range].underlineStyle = .single
+        }
+        return result
     }
 }
 
