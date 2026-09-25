@@ -13,8 +13,8 @@ struct ChatInput: View {
             editor
             HStack {
                 ModePicker(chat: chat)
+                Spacer(minLength: 8)
                 ModelPicker(store: store, chat: chat)
-                Spacer()
                 actionButton.composerButtonStyle()
                     .fixedSize()
             }
