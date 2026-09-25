@@ -52,6 +52,8 @@ final class PanelController {
         // ⌃ can be released elsewhere once the panel loses focus, so a switcher left open would get stuck.
         panel.onResignKey = { [weak self] in self?.store.cancelSwitcher() }
 
+        // The panel starts closed, so the retention clock is already running.
+        hiddenAt = .now
         applyThemeAppearance()
         applyGaussianBlur()
         NotificationCenter.default.addObserver(
@@ -99,6 +101,7 @@ final class PanelController {
             position(on: activeScreen())
         }
         hiddenAt = nil
+        ChatRetention.recordPanelShown()
         panel.makeKeyAndOrderFront(nil)
         applyGaussianBlur()
         store.requestFocus()
@@ -109,8 +112,17 @@ final class PanelController {
     func hide() {
         store.cancelSwitcher()
         store.dismissShortcuts()
+        store.dismissHistory()
         panel.orderOut(nil)
         hiddenAt = .now
+        ChatRetention.recordPanelHidden()
+    }
+
+    /// Called as the app quits: a panel still showing counts as hidden from now, for the retention check at the next launch.
+    func prepareForTermination() {
+        if panel.isVisible {
+            ChatRetention.recordPanelHidden()
+        }
     }
 
     /// Drops the chats and starts a new one if the panel has been closed longer than the retention setting allows.
@@ -146,9 +158,17 @@ final class PanelController {
         show()
     }
 
+    /// Opens the panel with the chat history list showing (⌘K from the menu bar menu).
+    func showHistory() {
+        store.showHistory()
+        show()
+    }
+
     private func handleEscape() {
         if store.isShowingShortcuts {
             store.dismissShortcuts()
+        } else if store.isHistoryOpen {
+            store.dismissHistory()
         } else if !store.active.cancelStreaming() {
             hide()
         }
@@ -156,8 +176,9 @@ final class PanelController {
 
     // MARK: - Chat keys
 
-    /// ⌘N / ⌘W / ⌘, (Settings) / ⌘/ (shortcuts), ⇧Tab (next chat mode), and the ⌃Tab switcher: hold ⌃ and press Tab (⇧Tab backward) to move, release ⌃ to switch.
+    /// ⌘N / ⌘W / ⌘K (history) / ⌘, (Settings) / ⌘/ (shortcuts), ⇧Tab (next chat mode), and the ⌃Tab switcher: hold ⌃ and press Tab (⇧Tab backward) to move, release ⌃ to switch.
     /// While the switcher is open it takes every key: arrows move, Return switches, Escape cancels.
+    /// While the history list is open, arrows move, Return opens, Escape closes; other keys reach its search field.
     private func handleKey(_ event: NSEvent) -> Bool {
         let modifiers = event.modifierFlags.intersection([.command, .option, .control, .shift])
 
@@ -173,7 +194,7 @@ final class PanelController {
             store.cycleSwitcher(backward: modifiers.contains(.shift))
             return true
         }
-        if event.keyCode == KeyCode.tab, modifiers == .shift, !store.isSwitcherOpen {
+        if event.keyCode == KeyCode.tab, modifiers == .shift, !store.isSwitcherOpen, !store.isHistoryOpen {
             store.dismissShortcuts()
             store.active.cycleMode()
             return true
@@ -181,6 +202,10 @@ final class PanelController {
 
         if modifiers == .command && event.charactersIgnoringModifiers == "/" {
             store.toggleShortcuts()
+            return true
+        }
+        if modifiers == .command && event.charactersIgnoringModifiers == "k" {
+            store.toggleHistory()
             return true
         }
         // Typing anything else closes the shortcuts list and carries on as usual (Escape closes it in `handleEscape`).
@@ -195,6 +220,17 @@ final class PanelController {
             case KeyCode.return, KeyCode.keypadEnter: store.commitSwitcher()
             case KeyCode.escape: store.cancelSwitcher()
             default: break
+            }
+            return true
+        }
+
+        if store.isHistoryOpen {
+            switch event.keyCode {
+            case KeyCode.upArrow: store.moveHistoryHighlight(by: -1)
+            case KeyCode.downArrow: store.moveHistoryHighlight(by: 1)
+            case KeyCode.return, KeyCode.keypadEnter: store.commitHistory()
+            case KeyCode.escape: store.dismissHistory()
+            default: return false
             }
             return true
         }

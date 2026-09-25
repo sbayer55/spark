@@ -24,7 +24,7 @@ struct CustomProvidersSection: View {
         } header: {
             Text("Custom providers")
         } footer: {
-            Text("Choose a config file or folder: ~/.config/opencode (and ~/.local/share/opencode for its keys), ~/.dsh for DeepSeek Harness, or ~/.9router. API keys are stored in your Keychain.")
+            Text("Choose a config file or folder: ~/.config/opencode (and ~/.local/share/opencode for its keys), ~/.dsh for DeepSeek Harness, or ~/.9router (which fills in the 9router section above). API keys are stored in your Keychain.")
                 .foregroundStyle(.secondary)
         }
         .fileImporter(isPresented: $isImporting, allowedContentTypes: [.folder, .item],
@@ -49,11 +49,16 @@ struct CustomProvidersSection: View {
     }
 
     private func importConfigs(from urls: [URL]) {
-        let report = ProviderImporter.importConfigs(from: urls)
+        var report = ProviderImporter.importConfigs(from: urls)
+        let names = report.providers.map(\.config.name)
+        // 9router is built in: its import fills in that entry rather than adding a custom provider.
+        if let index = report.providers.firstIndex(where: { $0.config.source == .nineRouter }) {
+            let imported = report.providers.remove(at: index)
+            store.registry.nineRouter.apply(baseURL: imported.config.baseURL, apiKey: imported.apiKey)
+        }
         customProviders.apply(report)
         refreshModels()
 
-        let names = report.providers.map(\.config.name)
         let title = switch (names.count, report.keys.isEmpty) {
         case (0, true): "Nothing to import"
         case (0, false): "Updated API keys"

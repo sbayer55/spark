@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Root view hosted in the chat panel: the active chat's message list and composer on a single flat panel,
-/// with the ⌃Tab switcher or ⌘/ shortcuts list over them while one is open.
+/// with the ⌃Tab switcher, ⌘K history, or ⌘/ shortcuts list over them while one is open.
 struct ChatView: View {
     let store: ChatStore
     let layout: PanelLayout
@@ -23,7 +23,8 @@ struct ChatView: View {
         let chat = store.active
         let isSwitching = store.isSwitcherOpen
         let isShowingShortcuts = store.isShowingShortcuts
-        let isCovered = isSwitching || isShowingShortcuts
+        let isHistoryOpen = store.isHistoryOpen
+        let isCovered = isSwitching || isShowingShortcuts || isHistoryOpen
         let theme = Theme.named(themeID)
 
         // A ZStack so the panel grows to fit the switcher when it's taller than the chat.
@@ -44,6 +45,7 @@ struct ChatView: View {
                 }
                 .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { composerHeight = $0 }
             }
+            .background { windowDragArea }
             .panelBackground(cornerRadius: PanelMetrics.cornerRadius)
             .blur(radius: isCovered ? 3 : 0)
             .opacity(isCovered ? 0.5 : 1)
@@ -54,12 +56,16 @@ struct ChatView: View {
                         .onTapGesture {
                             store.cancelSwitcher()
                             store.dismissShortcuts()
+                            store.dismissHistory()
                         }
                 }
             }
 
             if isSwitching {
                 ChatSwitcher(store: store)
+                    .padding(.horizontal, 32)
+            } else if isHistoryOpen {
+                ChatHistoryView(store: store)
                     .padding(.horizontal, 32)
             } else if isShowingShortcuts {
                 ShortcutsOverlay(store: store)
@@ -79,6 +85,15 @@ struct ChatView: View {
         .onAppear { onOpenSettingsAction(openSettings) }
     }
 
+    /// Sits behind the panel's content so dragging any empty part of the panel moves the window
+    /// (it's borderless, with no title bar to grab). Controls and selectable text above it keep their clicks.
+    private var windowDragArea: some View {
+        Color.clear
+            .contentShape(.rect)
+            .gesture(WindowDragGesture())
+            .allowsWindowActivationEvents(true)
+    }
+
     /// The message list's height limit: what's left of the user's maximum panel height after the composer
     /// and inset, or the default cap.
     private var maxListHeight: CGFloat {
@@ -96,6 +111,9 @@ struct ChatView: View {
                     }
                 }
                 .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                // The scroll view claims clicks for itself, so its gaps need their own drag area.
+                .background { windowDragArea }
                 .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { listContentHeight = $0 }
             }
             .scrollIndicators(.automatic)

@@ -1,15 +1,15 @@
 import Foundation
 
-/// A single message in a chat transcript. Kept in memory only for now.
-struct ChatMessage: Identifiable, Hashable, Sendable {
-    enum Role: String, Hashable, Sendable {
+/// A single message in a chat transcript. Saved with its chat by `ChatArchive` (see `ChatRecord`).
+struct ChatMessage: Identifiable, Hashable, Codable, Sendable {
+    enum Role: String, Hashable, Codable, Sendable {
         case user
         case assistant
         /// Instructions for the model. Only used in transient prompt arrays, never shown in the transcript.
         case system
     }
 
-    enum Status: Hashable, Sendable {
+    enum Status: Hashable, Codable, Sendable {
         case complete
         case streaming
         case cancelled

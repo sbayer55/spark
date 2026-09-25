@@ -2,7 +2,8 @@
 
 A macOS menu bar app for quick AI chats across multiple LLM providers. Press **Option+Space** anywhere to open a floating Liquid Glass chat panel.
 
-> Status: early. **Ollama** is live; Anthropic, Bifrost, and 9router are still mocked.
+> Status: early. Ollama, Anthropic, Amazon Bedrock, Bifrost, 9router, and imported OpenAI-compatible providers all work.
+> Chats are saved locally; press **⌘K** in the panel to search and reopen them.
 
 ## Ollama
 Install and start [Ollama](https://ollama.com), then pull a model:

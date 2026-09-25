@@ -61,6 +61,11 @@ private struct SparkMenu: View {
         }
         .keyboardShortcut("n")
 
+        Button("Chat History…") {
+            panelController.showHistory()
+        }
+        .keyboardShortcut("k")
+
         Button("Reset Panel Size") {
             panelController.resetSize()
         }

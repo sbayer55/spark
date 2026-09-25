@@ -1,7 +1,7 @@
 import Foundation
 
 /// How a chat answers the next message, picked in the composer (Cursor-style) or cycled with ⇧Tab.
-enum ChatMode: String, CaseIterable, Identifiable, Sendable {
+enum ChatMode: String, CaseIterable, Identifiable, Codable, Sendable {
     /// A plain reply from the model.
     case ask
     /// Deep research: web search and page reading, then an answer with citations (`ResearchAgent`).
