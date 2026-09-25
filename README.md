@@ -37,7 +37,7 @@ xcodebuild -scheme Spark -destination 'platform=macOS' -derivedDataPath build bu
 open build/Build/Products/Debug/Spark.app --args -SparkEphemeralSecrets YES
 ```
 
-Or with [just](https://github.com/casey/just): `just run` builds and relaunches (extra arguments go to the app, e.g. `just run -SparkEphemeralSecrets YES`), `just check` builds and fails on warnings like CI, and `just` lists every recipe.
+Or with [just](https://github.com/casey/just): `just run` builds and relaunches (extra arguments go to the app, e.g. `just run -SparkEphemeralSecrets YES`), `just check` builds and fails on warnings like CI, `just dmg` makes an installer disk image in `build/`, and `just` lists every recipe.
 
 Spark has no Dock icon. Look for the ✦ sparkle in the menu bar.
 

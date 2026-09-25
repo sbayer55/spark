@@ -52,6 +52,22 @@ archive: generate
     ditto -c -k --sequesterRsrc --keepParent {{derived}}/Spark.xcarchive/Products/Applications/Spark.app "{{derived}}/Spark-$version.zip"; \
     echo "{{derived}}/Spark-$version.zip"
 
+# Archive, then build a drag-to-Applications installer disk image in build/
+dmg: archive
+    #!/usr/bin/env bash
+    set -euo pipefail
+    app={{derived}}/Spark.xcarchive/Products/Applications/Spark.app
+    version=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$app/Contents/Info.plist")
+    staging={{derived}}/dmg
+    out={{derived}}/Spark-$version.dmg
+    rm -rf "$staging" "$out"
+    mkdir -p "$staging"
+    ditto "$app" "$staging/Spark.app"
+    ln -s /Applications "$staging/Applications"
+    diskutil image create from --format ULFO --volumeName "Spark $version" "$staging" "$out"
+    rm -rf "$staging"
+    echo "$out"
+
 # Remove build output and the generated project
 clean:
     rm -rf {{derived}} DerivedData Spark.xcodeproj build.log
