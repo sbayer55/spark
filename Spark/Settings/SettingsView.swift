@@ -2,6 +2,7 @@ import KeyboardShortcuts
 import SwiftUI
 
 struct SettingsView: View {
+    @Bindable var braveKey: BraveSearchKey
     @AppStorage(Ollama.baseURLKey) private var ollamaURL = Ollama.defaultBaseURL
     @AppStorage(ChatRetention.key) private var retentionMinutes = ChatRetention.defaultMinutes
 
@@ -24,6 +25,16 @@ struct SettingsView: View {
                 TextField("Server URL", text: $ollamaURL, prompt: Text(Ollama.defaultBaseURL))
                     .textContentType(.URL)
                     .autocorrectionDisabled()
+            }
+            Section {
+                SecureField("Brave Search API key", text: $braveKey.key)
+                    .textContentType(.password)
+                    .autocorrectionDisabled()
+            } header: {
+                Text("Research")
+            } footer: {
+                Text("Enables the Research button in the composer. Get a key at brave.com/search/api. Stored in your Keychain.")
+                    .foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)
