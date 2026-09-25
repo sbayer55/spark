@@ -225,8 +225,8 @@ final class ChatViewModel: Identifiable {
 
 /// The model the user last picked in any chat; new chats start with it when there's no current chat to copy.
 enum ModelPreference {
-    private static let providerKey = "selectedProviderID"
-    private static let modelKey = "selectedModel"
+    static let providerKey = "selectedProviderID"
+    static let modelKey = "selectedModel"
 
     static var stored: ModelSelection? {
         get {

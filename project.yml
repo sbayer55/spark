@@ -60,6 +60,9 @@ targets:
         com.apple.security.network.client: true
         # Importing provider configs (opencode, DeepSeek Harness, 9router) from files the user picks.
         com.apple.security.files.user-selected.read-only: true
+        # Settings persist in the real ~/.config/spark/config.json (ConfigFile), outside the container.
+        com.apple.security.temporary-exception.files.home-relative-path.read-write:
+          - /.config/spark/
     settings:
       base:
         # TODO: Change to your own bundle identifier.

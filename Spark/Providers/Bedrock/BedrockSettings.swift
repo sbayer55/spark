@@ -31,8 +31,8 @@ final class BedrockSettings {
     }
 
     static let defaultRegion = "us-east-1"
-    private static let regionKey = "bedrockRegion"
-    private static let authKey = "bedrockAuth"
+    static let regionKey = "bedrockRegion"
+    static let authKey = "bedrockAuth"
     private static let keychainAccount = "bedrock-credentials"
 
     var region: String {
@@ -58,6 +58,16 @@ final class BedrockSettings {
         auth = defaults.string(forKey: Self.authKey).flatMap(Auth.init) ?? .apiKey
         let stored = (try? Keychain.string(account: Self.keychainAccount)).map { Data($0.utf8) }
         secrets = stored.flatMap { try? JSONDecoder().decode(Secrets.self, from: $0) } ?? Secrets()
+        ConfigFile.onReload { [weak self] in self?.reload() }
+    }
+
+    /// Picks up an edit to the config file. Only differing values are set, so nothing is written back.
+    private func reload() {
+        let defaults = UserDefaults.standard
+        let region = defaults.string(forKey: Self.regionKey) ?? Self.defaultRegion
+        let auth = defaults.string(forKey: Self.authKey).flatMap(Auth.init) ?? .apiKey
+        if self.region != region { self.region = region }
+        if self.auth != auth { self.auth = auth }
     }
 
     /// The provider, or nil until the chosen sign-in method's credentials are filled in.

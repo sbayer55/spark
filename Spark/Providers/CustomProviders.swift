@@ -35,21 +35,40 @@ enum ProviderConfigSource: String, Codable, Sendable, CaseIterable {
 @MainActor
 @Observable
 final class CustomProviders {
-    private static let defaultsKey = "customProviders"
+    static let defaultsKey = "customProviders"
 
     private(set) var configs: [CustomProviderConfig]
     /// API keys by provider ID. Missing or empty means no key.
     private var keys: [String: String]
 
     init() {
-        let stored = UserDefaults.standard.data(forKey: Self.defaultsKey)
-        configs = stored.flatMap { try? JSONDecoder().decode([CustomProviderConfig].self, from: $0) } ?? []
+        configs = Self.storedConfigs()
         keys = [:]
-        for config in configs {
+        loadKeys()
+        ConfigFile.onReload { [weak self] in self?.reload() }
+    }
+
+    private static func storedConfigs() -> [CustomProviderConfig] {
+        let stored = UserDefaults.standard.data(forKey: defaultsKey)
+        return stored.flatMap { try? JSONDecoder().decode([CustomProviderConfig].self, from: $0) } ?? []
+    }
+
+    /// Reads the Keychain for providers whose key isn't loaded yet.
+    private func loadKeys() {
+        for config in configs where keys[config.id] == nil {
             if let key = try? Keychain.string(account: Self.keychainAccount(for: config.id)) {
                 keys[config.id] = key
             }
         }
+    }
+
+    /// Picks up an edit to the config file. Keys of removed providers stay in the Keychain, so re-adding
+    /// the entry brings its key back.
+    private func reload() {
+        let stored = Self.storedConfigs()
+        guard stored != configs else { return }
+        configs = stored
+        loadKeys()
     }
 
     /// Live providers for the registry, rebuilt whenever a config or key changes.
