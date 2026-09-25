@@ -8,6 +8,9 @@ struct ResearchAgent: Sendable {
     let model: String
     let search: BraveSearchClient
     let reader: PageReader
+    /// The user's system prompt. Only the final answer uses it: the planning steps need their strict JSON
+    /// instructions, which a custom prompt could override.
+    var systemPrompt: String?
 
     enum Limits {
         static let maxRounds = 2
@@ -76,7 +79,8 @@ struct ResearchAgent: Sendable {
 
         // 3. Synthesize.
         let synthesizing = progress.start("Synthesizing answer…")
-        let messages = [ChatMessage(role: .system, content: ResearchPrompts.synthesis(notes: notes))] + history
+        let instructions = [systemPrompt, ResearchPrompts.synthesis(notes: notes)].compactMap(\.self)
+        let messages = [ChatMessage(role: .system, content: instructions.joined(separator: "\n\n"))] + history
         var first = true
         for try await chunk in provider.stream(messages: messages, model: model) {
             if first {

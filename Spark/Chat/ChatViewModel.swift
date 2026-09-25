@@ -87,17 +87,20 @@ final class ChatViewModel: Identifiable {
         messages.append(reply)
         streamingMessageID = reply.id
         let apiKey = braveKey.value
+        let systemPrompt = SystemPrompt.current()
 
         streamTask = Task { [weak self] in
             do {
                 if research {
                     let agent = ResearchAgent(provider: provider, model: selection.model,
-                                              search: BraveSearchClient(apiKey: apiKey), reader: PageReader())
+                                              search: BraveSearchClient(apiKey: apiKey), reader: PageReader(),
+                                              systemPrompt: systemPrompt)
                     for try await event in agent.run(history: history) {
                         self?.apply(event, to: reply.id)
                     }
                 } else {
-                    for try await chunk in provider.stream(messages: history, model: selection.model) {
+                    let messages = (systemPrompt.map { [ChatMessage(role: .system, content: $0)] } ?? []) + history
+                    for try await chunk in provider.stream(messages: messages, model: selection.model) {
                         self?.append(chunk, to: reply.id)
                     }
                 }

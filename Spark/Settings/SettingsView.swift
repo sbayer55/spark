@@ -87,6 +87,7 @@ private struct SettingsForm<Content: View>: View {
 
 private struct GeneralSettingsView: View {
     @AppStorage(ChatRetention.key) private var retentionMinutes = ChatRetention.defaultMinutes
+    @AppStorage(SystemPrompt.key) private var systemPrompt = ""
 
     var body: some View {
         SettingsForm {
@@ -101,6 +102,26 @@ private struct GeneralSettingsView: View {
                 }
             } footer: {
                 Text("When you reopen Spark after this long, it starts a new chat.")
+                    .foregroundStyle(.secondary)
+            }
+            Section {
+                TextEditor(text: $systemPrompt)
+                    .font(.body)
+                    .scrollContentBackground(.hidden)
+                    .frame(minHeight: 90, maxHeight: 200)
+                    .overlay(alignment: .topLeading) {
+                        if systemPrompt.isEmpty {
+                            Text("e.g. Answer concisely. Use metric units.")
+                                .foregroundStyle(.tertiary)
+                                .padding(.leading, 5)
+                                .allowsHitTesting(false)
+                        }
+                    }
+                    .accessibilityLabel("System prompt")
+            } header: {
+                Text("System prompt")
+            } footer: {
+                Text("Sent to the model at the start of every chat, with any provider. In Research mode it shapes the final answer. Leave empty for none.")
                     .foregroundStyle(.secondary)
             }
         }

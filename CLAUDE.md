@@ -27,7 +27,9 @@ Native macOS menu bar app for quick AI chats across multiple LLM providers (Olla
 - Chat state is in memory only (no persistence yet). Several chats can be open at once (⌘N new, ⌘W close,
   ⌃Tab switcher); a background chat keeps streaming. A closed panel keeps its chats for the "Keep chat after closing"
   setting (`ChatRetention`, default 5 minutes); reopening after that drops every chat not mid-reply and starts a new one.
-  Settings (Ollama URL, last-picked model, retention, panel size, text size, theme, panel transparency and blur) live in `UserDefaults`.
+  Settings (Ollama URL, last-picked model, retention, system prompt, panel size, text size, theme, panel transparency
+  and blur) live in `UserDefaults`. The system prompt (`SystemPrompt`) is read at each send; research uses it only
+  for the final answer, since the planning prompts need their strict JSON instructions.
   The Brave Search API key lives in the Keychain (`Keychain.swift`, mirrored by `BraveSearchKey`), never in `UserDefaults`.
 - **Anthropic and Amazon Bedrock** are native clients, listed only once their credentials are set in Settings.
   Anthropic: API key in the Keychain (`KeychainSecret`). Bedrock: region and sign-in method in `UserDefaults`,
