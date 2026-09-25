@@ -5,6 +5,8 @@ struct SettingsView: View {
     @Bindable var braveKey: BraveSearchKey
     @AppStorage(Ollama.baseURLKey) private var ollamaURL = Ollama.defaultBaseURL
     @AppStorage(ChatRetention.key) private var retentionMinutes = ChatRetention.defaultMinutes
+    @AppStorage(PanelAppearance.transparencyKey) private var transparency = PanelAppearance.defaultTransparency
+    @AppStorage(PanelAppearance.blurKey) private var blur = PanelAppearance.defaultBlur
 
     var body: some View {
         Form {
@@ -20,6 +22,21 @@ struct SettingsView: View {
             } footer: {
                 Text("When you reopen Spark after this long, it starts a new chat.")
                     .foregroundStyle(.secondary)
+            }
+            Section("Appearance") {
+                Slider(value: $transparency, in: 0...1) {
+                    Text("Transparency:")
+                } minimumValueLabel: {
+                    Text("Solid")
+                } maximumValueLabel: {
+                    Text("Glass")
+                }
+                Picker("Background blur:", selection: $blur) {
+                    ForEach(PanelAppearance.Blur.allCases) { blur in
+                        Text(blur.label).tag(blur)
+                    }
+                }
+                .pickerStyle(.segmented)
             }
             Section("Ollama") {
                 TextField("Server URL", text: $ollamaURL, prompt: Text(Ollama.defaultBaseURL))
