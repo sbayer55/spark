@@ -15,16 +15,25 @@ struct MessageRow: View {
                     .background(.tint.opacity(0.18), in: .rect(cornerRadius: 14, style: .continuous))
             }
         case .assistant:
-            VStack(alignment: .leading, spacing: 4) {
-                if message.content.isEmpty && message.status == .streaming {
+            VStack(alignment: .leading, spacing: 6) {
+                if let research = message.research {
+                    ResearchProgressView(research: research,
+                                         isRunning: message.status == .streaming && message.content.isEmpty)
+                }
+                if message.content.isEmpty && message.status == .streaming && message.research == nil {
                     ProgressView()
                         .controlSize(.small)
-                } else {
+                } else if !message.content.isEmpty || message.research == nil {
                     MarkdownView(text: message.content)
+                }
+                if let research = message.research, message.status != .streaming, !research.sources.isEmpty {
+                    ResearchSourcesView(sources: research.sources)
                 }
                 statusLabel
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+        case .system:
+            EmptyView()
         }
     }
 

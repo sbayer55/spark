@@ -7,6 +7,8 @@ import Observation
 @Observable
 final class ChatStore {
     let registry: ProviderRegistry
+    /// App-wide Brave Search key (Keychain-backed); shared by every chat and the Settings window.
+    let braveKey: BraveSearchKey
 
     /// Never empty. Kept in most-recently-used order, so `chats[0]` is the active chat.
     private(set) var chats: [ChatViewModel]
@@ -20,9 +22,10 @@ final class ChatStore {
     var active: ChatViewModel { chats[0] }
     var isSwitcherOpen: Bool { switcherIndex != nil }
 
-    init(registry: ProviderRegistry = ProviderRegistry()) {
+    init(registry: ProviderRegistry = ProviderRegistry(), braveKey: BraveSearchKey = BraveSearchKey()) {
         self.registry = registry
-        let first = ChatViewModel(registry: registry, preferredSelection: ModelPreference.stored)
+        self.braveKey = braveKey
+        let first = ChatViewModel(registry: registry, braveKey: braveKey, preferredSelection: ModelPreference.stored)
         first.isActive = true
         chats = [first]
     }
@@ -127,6 +130,7 @@ final class ChatStore {
 
     private func makeChat(like chat: ChatViewModel? = nil) -> ChatViewModel {
         let template = chat ?? active
-        return ChatViewModel(registry: registry, preferredSelection: template.preferredSelection ?? ModelPreference.stored)
+        return ChatViewModel(registry: registry, braveKey: braveKey,
+                             preferredSelection: template.preferredSelection ?? ModelPreference.stored)
     }
 }

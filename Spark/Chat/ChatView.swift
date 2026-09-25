@@ -23,11 +23,14 @@ struct ChatView: View {
         ZStack(alignment: .top) {
             GlassEffectContainer(spacing: 10) {
                 VStack(spacing: 10) {
-                    if fillsHeight || !chat.messages.isEmpty {
+                    if !chat.messages.isEmpty {
                         messageList(for: chat, fillsHeight: fillsHeight)
                             .id(chat.id)
                             .glassEffect(.themed(theme), in: .rect(cornerRadius: 22, style: .continuous))
                             .transition(.opacity)
+                    } else if fillsHeight {
+                        // No empty glass for a new chat; keep the composer at the bottom of the fixed-height panel.
+                        Spacer(minLength: 0)
                     }
                     ChatInput(store: store, chat: chat)
                         .glassEffect(.themed(theme), in: .rect(cornerRadius: 22, style: .continuous))
@@ -86,8 +89,12 @@ struct ChatView: View {
         }
     }
 
-    /// Changes whenever a message is added or the streaming message grows.
+    /// Changes whenever a message is added, the streaming message grows, or a research step updates.
     private func scrollTrigger(for chat: ChatViewModel) -> Int {
-        chat.messages.count &* 1_000_003 &+ (chat.messages.last?.content.count ?? 0)
+        var hasher = Hasher()
+        hasher.combine(chat.messages.count)
+        hasher.combine(chat.messages.last?.content.count ?? 0)
+        hasher.combine(chat.messages.last?.research)
+        return hasher.finalize()
     }
 }
