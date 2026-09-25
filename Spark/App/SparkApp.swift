@@ -14,6 +14,15 @@ struct SparkApp: App {
         Settings {
             SettingsView(store: appDelegate.panelController.store)
         }
+        .commands {
+            // ⌘/ while Settings (or any other Spark window) is focused. The chat panel handles it itself.
+            CommandGroup(replacing: .help) {
+                Button("Keyboard Shortcuts") {
+                    appDelegate.panelController.showShortcuts()
+                }
+                .keyboardShortcut("/")
+            }
+        }
     }
 }
 

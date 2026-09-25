@@ -108,6 +108,7 @@ final class PanelController {
 
     func hide() {
         store.cancelSwitcher()
+        store.dismissShortcuts()
         panel.orderOut(nil)
         hiddenAt = .now
     }
@@ -139,15 +140,23 @@ final class PanelController {
         hide()
     }
 
+    /// Opens the panel with the keyboard shortcuts overlay showing (⌘/ from elsewhere in the app, e.g. Settings).
+    func showShortcuts() {
+        store.showShortcuts()
+        show()
+    }
+
     private func handleEscape() {
-        if !store.active.cancelStreaming() {
+        if store.isShowingShortcuts {
+            store.dismissShortcuts()
+        } else if !store.active.cancelStreaming() {
             hide()
         }
     }
 
     // MARK: - Chat keys
 
-    /// ⌘N / ⌘W / ⌘, (Settings), and the ⌃Tab switcher: hold ⌃ and press Tab (⇧Tab backward) to move, release ⌃ to switch.
+    /// ⌘N / ⌘W / ⌘, (Settings) / ⌘/ (shortcuts), and the ⌃Tab switcher: hold ⌃ and press Tab (⇧Tab backward) to move, release ⌃ to switch.
     /// While the switcher is open it takes every key: arrows move, Return switches, Escape cancels.
     private func handleKey(_ event: NSEvent) -> Bool {
         let modifiers = event.modifierFlags.intersection([.command, .option, .control, .shift])
@@ -163,6 +172,15 @@ final class PanelController {
         if event.keyCode == KeyCode.tab, modifiers.contains(.control) {
             store.cycleSwitcher(backward: modifiers.contains(.shift))
             return true
+        }
+
+        if modifiers == .command && event.charactersIgnoringModifiers == "/" {
+            store.toggleShortcuts()
+            return true
+        }
+        // Typing anything else closes the shortcuts list and carries on as usual (Escape closes it in `handleEscape`).
+        if store.isShowingShortcuts && event.keyCode != KeyCode.escape {
+            store.dismissShortcuts()
         }
 
         if store.isSwitcherOpen {

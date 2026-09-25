@@ -22,6 +22,9 @@ final class ChatStore {
     var active: ChatViewModel { chats[0] }
     var isSwitcherOpen: Bool { switcherIndex != nil }
 
+    /// Whether the ⌘/ keyboard shortcuts overlay is showing.
+    private(set) var isShowingShortcuts = false
+
     init(registry: ProviderRegistry = ProviderRegistry(), braveKey: BraveSearchKey = BraveSearchKey()) {
         self.registry = registry
         self.braveKey = braveKey
@@ -90,6 +93,7 @@ final class ChatStore {
         if isSwitcherOpen {
             moveSwitcherHighlight(by: backward ? -1 : 1)
         } else {
+            isShowingShortcuts = false
             switcherIndex = backward ? chats.count - 1 : 1
         }
     }
@@ -112,6 +116,22 @@ final class ChatStore {
 
     func cancelSwitcher() {
         switcherIndex = nil
+    }
+
+    // MARK: - Shortcuts overlay
+
+    func toggleShortcuts() {
+        switcherIndex = nil
+        isShowingShortcuts.toggle()
+    }
+
+    func showShortcuts() {
+        switcherIndex = nil
+        isShowingShortcuts = true
+    }
+
+    func dismissShortcuts() {
+        isShowingShortcuts = false
     }
 
     // MARK: -
