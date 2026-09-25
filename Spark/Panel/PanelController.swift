@@ -156,7 +156,7 @@ final class PanelController {
 
     // MARK: - Chat keys
 
-    /// ⌘N / ⌘W / ⌘, (Settings) / ⌘/ (shortcuts), and the ⌃Tab switcher: hold ⌃ and press Tab (⇧Tab backward) to move, release ⌃ to switch.
+    /// ⌘N / ⌘W / ⌘, (Settings) / ⌘/ (shortcuts), ⇧Tab (next chat mode), and the ⌃Tab switcher: hold ⌃ and press Tab (⇧Tab backward) to move, release ⌃ to switch.
     /// While the switcher is open it takes every key: arrows move, Return switches, Escape cancels.
     private func handleKey(_ event: NSEvent) -> Bool {
         let modifiers = event.modifierFlags.intersection([.command, .option, .control, .shift])
@@ -171,6 +171,11 @@ final class PanelController {
 
         if event.keyCode == KeyCode.tab, modifiers.contains(.control) {
             store.cycleSwitcher(backward: modifiers.contains(.shift))
+            return true
+        }
+        if event.keyCode == KeyCode.tab, modifiers == .shift, !store.isSwitcherOpen {
+            store.dismissShortcuts()
+            store.active.cycleMode()
             return true
         }
 

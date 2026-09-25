@@ -12,8 +12,8 @@ struct ChatInput: View {
         VStack(alignment: .leading, spacing: 10) {
             editor
             HStack {
+                ModePicker(chat: chat)
                 ModelPicker(store: store, chat: chat)
-                researchToggle
                 Spacer()
                 actionButton.composerButtonStyle()
                     .fixedSize()
@@ -44,27 +44,13 @@ struct ChatInput: View {
             }
             .overlay(alignment: .topLeading) {
                 if chat.draft.isEmpty {
-                    Text(chat.researchEnabled ? "Research anything…" : "Ask anything…")
+                    Text(chat.effectiveMode.placeholder)
                         .foregroundStyle(.tertiary)
                         .padding(.leading, 5)
                         .allowsHitTesting(false)
                 }
             }
             .scaledFont(size: 15)
-    }
-
-    /// Sticky per chat; disabled until a Brave Search API key is set in Settings.
-    private var researchToggle: some View {
-        Toggle(isOn: $chat.researchEnabled) {
-            Label("Research", systemImage: "globe")
-        }
-        .toggleStyle(ChipToggleStyle())
-        .scaledFont(.callout, maxSize: TextSize.maxControlFontSize)
-        .fixedSize()
-        .disabled(!chat.isResearchAvailable)
-        .help(chat.isResearchAvailable
-              ? "Search the web and read pages before answering"
-              : "Add a Brave Search API key in Settings to enable Research")
     }
 
     @ViewBuilder
@@ -77,31 +63,6 @@ struct ChatInput: View {
                 .disabled(!chat.canSend)
                 .help("Send (Return)")
         }
-    }
-}
-
-/// A capsule toggle drawn in SwiftUI so its text, padding, and shape all follow the text size
-/// (the system `.button` toggle style sizes its bezel and label by control size, ignoring the font).
-private struct ChipToggleStyle: ToggleStyle {
-    @Environment(\.textScale) private var scale
-    @Environment(\.isEnabled) private var isEnabled
-
-    func makeBody(configuration: Configuration) -> some View {
-        Button {
-            configuration.isOn.toggle()
-        } label: {
-            let scale = TextSize.controlScale(for: scale)
-            configuration.label
-                .padding(.horizontal, 8 * scale)
-                .padding(.vertical, 3 * scale)
-                .foregroundStyle(configuration.isOn ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
-                .background(configuration.isOn ? AnyShapeStyle(.tint.opacity(0.2)) : AnyShapeStyle(.quaternary),
-                            in: .capsule)
-                .contentShape(.capsule)
-        }
-        .buttonStyle(.plain)
-        .opacity(isEnabled ? 1 : 0.5)
-        .accessibilityAddTraits(configuration.isOn ? .isSelected : [])
     }
 }
 

@@ -11,8 +11,8 @@ final class ChatViewModel: Identifiable {
 
     var messages: [ChatMessage] = []
     var draft = ""
-    /// Whether the next send runs deep research (web search + reading) before answering. Sticky per chat.
-    var researchEnabled = false
+    /// How the next message is answered. Sticky per chat; every new chat starts in Ask.
+    var mode = ChatMode.ask
     private(set) var selection: ModelSelection?
     /// The model this chat prefers (picked here, or inherited when it was created); restored whenever it's available.
     private(set) var preferredSelection: ModelSelection?
@@ -36,6 +36,20 @@ final class ChatViewModel: Identifiable {
 
     /// Research needs a Brave Search API key (entered in Settings).
     var isResearchAvailable: Bool { braveKey.hasKey }
+
+    func isAvailable(_ mode: ChatMode) -> Bool {
+        mode != .research || isResearchAvailable
+    }
+
+    /// The mode the next send actually uses: Research falls back to Ask if its key was removed.
+    var effectiveMode: ChatMode { isAvailable(mode) ? mode : .ask }
+
+    /// ⇧Tab: moves to the next available mode, wrapping around.
+    func cycleMode() {
+        let modes = ChatMode.allCases.filter(isAvailable)
+        guard let index = modes.firstIndex(of: effectiveMode) else { return }
+        mode = modes[(index + 1) % modes.count]
+    }
 
     /// Nothing sent and nothing typed; such a chat is dropped once the user moves away from it.
     var isEmpty: Bool {
@@ -81,7 +95,7 @@ final class ChatViewModel: Identifiable {
         messages.append(ChatMessage(role: .user, content: text))
         let history = messages
 
-        let research = researchEnabled && isResearchAvailable
+        let research = effectiveMode == .research
         let reply = ChatMessage(role: .assistant, content: "", status: .streaming,
                                 research: research ? ResearchState() : nil)
         messages.append(reply)

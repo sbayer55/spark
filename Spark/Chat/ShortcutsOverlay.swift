@@ -40,6 +40,7 @@ struct ShortcutsOverlay: View {
             Group(title: "Composer", shortcuts: [
                 Shortcut(keys: "↩", action: "Send"),
                 Shortcut(keys: "⇧↩", action: "New line"),
+                Shortcut(keys: "⇧Tab", action: "Switch mode (Ask, Research)"),
                 Shortcut(keys: "Esc", action: "Stop the reply, or close Spark"),
             ]),
             Group(title: "Text size", shortcuts: [
