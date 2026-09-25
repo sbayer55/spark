@@ -15,6 +15,11 @@ enum LaunchOptions {
     static let ephemeralHistory = UserDefaults.standard.bool(forKey: "SparkEphemeralHistory")
         || NSClassFromString("XCTestCase") != nil
 
+    /// Leave `~/.config/spark/config.json` alone (see `ConfigFile`): settings live only in `UserDefaults`, so a test
+    /// run neither applies nor overwrites the user's config file. Also on whenever XCTest is loaded.
+    static let ephemeralConfig = UserDefaults.standard.bool(forKey: "SparkEphemeralConfig")
+        || NSClassFromString("XCTestCase") != nil
+
     /// Show the chat panel as soon as the app launches (scripts can't press the global hotkey).
     static let showPanelOnLaunch = UserDefaults.standard.bool(forKey: "SparkShowPanelOnLaunch")
 }

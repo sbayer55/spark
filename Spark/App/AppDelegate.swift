@@ -3,13 +3,21 @@ import KeyboardShortcuts
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    let panelController = PanelController()
+    let panelController: PanelController
     private var availabilityTask: Task<Void, Never>?
 
     /// How often provider availability is re-checked for the menu bar icon.
     private static let availabilityInterval: Duration = .seconds(60)
 
+    override init() {
+        // The config file must be applied before anything reads a setting.
+        ConfigFile.shared.load()
+        panelController = PanelController()
+        super.init()
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
+        ConfigFile.shared.start()
         KeyboardShortcuts.onKeyDown(for: .togglePanel) { [weak self] in
             self?.panelController.toggle()
         }

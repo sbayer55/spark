@@ -39,6 +39,11 @@ final class GatewaySettings {
             keyPrompt: "API key from the 9router dashboard",
             help: "9router routes to the providers set up in its dashboard. Create an API key there, or import ~/.9router under Custom providers to fill this in. Models come from the router unless you list them here."
         )
+
+        /// Every `UserDefaults` key this gateway's settings use.
+        var defaultsKeys: [String] {
+            ["Enabled", "BaseURL", "Models"].map { defaultsPrefix + $0 }
+        }
     }
 
     let kind: Kind
@@ -67,6 +72,18 @@ final class GatewaySettings {
         baseURLText = defaults.string(forKey: prefix + "BaseURL") ?? ""
         modelsText = defaults.string(forKey: prefix + "Models") ?? ""
         apiKey = KeychainSecret(account: kind.keychainAccount)
+        ConfigFile.onReload { [weak self] in self?.reload() }
+    }
+
+    /// Picks up an edit to the config file. Only differing values are set, so nothing is written back.
+    private func reload() {
+        let defaults = UserDefaults.standard
+        let enabled = defaults.bool(forKey: enabledKey)
+        let url = defaults.string(forKey: baseURLKey) ?? ""
+        let models = defaults.string(forKey: modelsKey) ?? ""
+        if isEnabled != enabled { isEnabled = enabled }
+        if baseURLText != url { baseURLText = url }
+        if modelsText != models { modelsText = models }
     }
 
     var enabledKey: String { kind.defaultsPrefix + "Enabled" }

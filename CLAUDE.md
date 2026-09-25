@@ -32,7 +32,12 @@ Native macOS menu bar app for quick AI chats across multiple LLM providers (Olla
   reopens saved chats; the open chats (`openChatIDs`) come back at the next launch unless the retention window has
   passed since the panel was last hidden (`panelHiddenAt`). General settings has a "Save chat history" switch and
   "Clear History". Settings (Ollama URL, last-picked model, retention, system prompt, panel size, text size, theme,
-  panel transparency and blur) live in `UserDefaults`. The system prompt (`SystemPrompt`) is read at each send; research uses it only
+  panel transparency and blur) live in `UserDefaults`, persisted to the real `~/.config/spark/config.json` by
+  `ConfigFile` (`Spark/Settings`): the file is the source of truth, applied at launch and on external edits (it's
+  watched), and rewritten after in-app changes. New settings keys must be added to `ConfigFile.keys`; session state
+  (`openChatIDs`, `panelHiddenAt`) and secrets stay out. The sandbox reaches it via a home-relative
+  temporary-exception entitlement. `@Observable` settings that read `UserDefaults` only at init refresh via
+  `ConfigFile.onReload`. The system prompt (`SystemPrompt`) is read at each send; research uses it only
   for the final answer, since the planning prompts need their strict JSON instructions.
   The Brave Search API key lives in the Keychain (`Keychain.swift`, mirrored by `BraveSearchKey`), never in `UserDefaults`.
 - **Bifrost and 9router** are local OpenAI-compatible gateways (`GatewaySettings` → `OpenAICompatibleProvider`),
@@ -71,6 +76,8 @@ open <DerivedData>/Build/Products/Debug/Spark.app --env SPARK_SECRET_ANTHROPIC_A
 - `-SparkEphemeralSecrets YES` keeps secrets in memory (no Keychain prompts, which ad-hoc signing triggers on every
   rebuild). Seed them with `SPARK_SECRET_<ACCOUNT>` env vars (see `Keychain`). Automatic under XCTest.
 - `-SparkEphemeralHistory YES` keeps chat history in memory, so a test run never reads or writes the user's saved chats.
+  Automatic under XCTest.
+- `-SparkEphemeralConfig YES` leaves `~/.config/spark/config.json` alone (neither applied nor written).
   Automatic under XCTest.
 - `-SparkShowPanelOnLaunch YES` opens the chat panel at launch; scripts can't press the global hotkey.
 - Any setting can be overridden for one launch with `-<defaultsKey> <value>` (argument domain; not persisted).

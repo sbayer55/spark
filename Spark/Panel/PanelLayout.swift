@@ -22,13 +22,30 @@ final class PanelLayout {
     var isCustomized: Bool { maxHeight != nil || width != PanelMetrics.width }
 
     @ObservationIgnored private let defaults: UserDefaults
-    private static let widthKey = "panelWidth"
-    private static let heightKey = "panelHeight"
+    static let widthKey = "panelWidth"
+    static let heightKey = "panelHeight"
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
-        width = (defaults.object(forKey: Self.widthKey) as? Double).map { CGFloat($0) } ?? PanelMetrics.width
-        maxHeight = (defaults.object(forKey: Self.heightKey) as? Double).map { CGFloat($0) }
+        width = Self.storedWidth(defaults)
+        maxHeight = Self.storedHeight(defaults)
+        ConfigFile.onReload { [weak self] in self?.reload() }
+    }
+
+    /// Picks up an edit to the config file. Only differing values are set, so nothing is written back.
+    private func reload() {
+        let width = Self.storedWidth(defaults)
+        let maxHeight = Self.storedHeight(defaults)
+        if self.width != width { self.width = width }
+        if self.maxHeight != maxHeight { self.maxHeight = maxHeight }
+    }
+
+    private static func storedWidth(_ defaults: UserDefaults) -> CGFloat {
+        (defaults.object(forKey: widthKey) as? Double).map { CGFloat($0) } ?? PanelMetrics.width
+    }
+
+    private static func storedHeight(_ defaults: UserDefaults) -> CGFloat? {
+        (defaults.object(forKey: heightKey) as? Double).map { CGFloat($0) }
     }
 
     /// Returns to the default width and height cap.
