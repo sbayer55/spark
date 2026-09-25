@@ -17,7 +17,7 @@ enum Keychain {
         }
     }
 
-    private static let service = Bundle.main.bundleIdentifier ?? "com.yourname.spark"
+    private static let service = Bundle.main.bundleIdentifier ?? "com.tesseraga.spark"
 
     /// The stored string, or nil if there is no item for `account`.
     static func string(account: String) throws -> String? {
