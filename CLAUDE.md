@@ -20,7 +20,7 @@ Native macOS menu bar app for quick AI chats across multiple LLM providers (Olla
 - Chat state is in memory only (no persistence yet). Several chats can be open at once (⌘N new, ⌘W close,
   ⌃Tab switcher); a background chat keeps streaming. A closed panel keeps its chats for the "Keep chat after closing"
   setting (`ChatRetention`, default 5 minutes); reopening after that drops every chat not mid-reply and starts a new one.
-  Settings (Ollama URL, last-picked model, retention, panel size, text size) live in `UserDefaults`.
+  Settings (Ollama URL, last-picked model, retention, panel size, text size, theme) live in `UserDefaults`.
   The Brave Search API key lives in the Keychain (`Keychain.swift`, mirrored by `BraveSearchKey`), never in `UserDefaults`.
 - **Custom providers** (`CustomProviders`) are OpenAI-compatible endpoints imported in Settings from opencode
   (`opencode.json[c]`, `auth.json`), DeepSeek Harness (`~/.dsh`: `settings.yaml`, profile `cordis.patch.yml`,
@@ -51,5 +51,7 @@ xcodegen generate && xcodebuild -scheme Spark -destination 'platform=macOS' buil
 - `Spark/Models`: `ChatMessage`, `Research` (research steps, sources, events)
 - `Spark/Research`: `ResearchAgent` (orchestration), `ResearchPrompts`, `BraveSearchClient`, `PageReader` (SwiftSoup),
   `BraveSearchKey` (Keychain-backed key store)
-- `Spark/Settings`: Settings window, `Keychain` helper
+- `Spark/Settings`: Settings window (General tab, Appearance tab with the `ThemePicker` grid), `Keychain` helper
+- `Spark/Theme`: `Theme` (palette, `\.theme` environment, `Glass.themed`, `themeStyle`) and `ThemeCatalog` (built-in palettes).
+  No theme (`Theme.systemID`) is the default Liquid Glass look; themed views must look right both ways.
 - `Spark/Resources`: assets; `Info.plist` and entitlements are generated from `project.yml`

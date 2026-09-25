@@ -3,8 +3,31 @@ import SwiftUI
 
 struct SettingsView: View {
     let store: ChatStore
+    @AppStorage(Theme.key) private var themeID = Theme.systemID
+
+    var body: some View {
+        let theme = Theme.named(themeID)
+        TabView {
+            Tab("General", systemImage: "gearshape") {
+                GeneralSettingsView(store: store)
+            }
+            Tab("Appearance", systemImage: "paintpalette") {
+                ThemePicker()
+            }
+        }
+        .environment(\.theme, theme)
+        .themeStyle(theme)
+        .preferredColorScheme(theme.map { $0.isDark ? .dark : .light })
+        .containerBackground(theme.map { AnyShapeStyle($0.background) } ?? AnyShapeStyle(.windowBackground), for: .window)
+        .writingToolsBehavior(.disabled)
+    }
+}
+
+private struct GeneralSettingsView: View {
+    let store: ChatStore
     @AppStorage(Ollama.baseURLKey) private var ollamaURL = Ollama.defaultBaseURL
     @AppStorage(ChatRetention.key) private var retentionMinutes = ChatRetention.defaultMinutes
+    @Environment(\.theme) private var theme
 
     var body: some View {
         Form {
@@ -40,7 +63,8 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .writingToolsBehavior(.disabled)
+        // Let the theme's window background show through.
+        .scrollContentBackground(theme == nil ? .automatic : .hidden)
         .frame(width: 420)
         .fixedSize()
     }
