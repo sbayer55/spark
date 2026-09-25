@@ -42,6 +42,21 @@ final class PanelController {
         panel.onKeyEvent = { [weak self] event in self?.handleKey(event) ?? false }
         // ⌃ can be released elsewhere once the panel loses focus, so a switcher left open would get stuck.
         panel.onResignKey = { [weak self] in self?.store.cancelSwitcher() }
+
+        applyThemeAppearance()
+        NotificationCenter.default.addObserver(
+            forName: UserDefaults.didChangeNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.applyThemeAppearance() }
+        }
+    }
+
+    /// Matches the panel's appearance to the theme's light or dark background, so the glass, menus, and
+    /// system controls agree with it. The system look (no theme) follows the system appearance.
+    private func applyThemeAppearance() {
+        let name: NSAppearance.Name? = Theme.current().map { $0.isDark ? .darkAqua : .aqua }
+        guard panel.appearance?.name != name else { return }
+        panel.appearance = name.flatMap(NSAppearance.init(named:))
     }
 
     var isVisible: Bool { panel.isVisible }

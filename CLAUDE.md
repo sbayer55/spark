@@ -18,7 +18,7 @@ Native macOS menu bar app for quick AI chats across multiple LLM providers (Olla
 - Chat state is in memory only (no persistence yet). Several chats can be open at once (⌘N new, ⌘W close,
   ⌃Tab switcher); a background chat keeps streaming. A closed panel keeps its chats for the "Keep chat after closing"
   setting (`ChatRetention`, default 5 minutes); reopening after that drops every chat not mid-reply and starts a new one.
-  Settings (Ollama URL, last-picked model, retention, panel size, text size) live in `UserDefaults`.
+  Settings (Ollama URL, last-picked model, retention, panel size, text size, theme) live in `UserDefaults`.
 - ATS allows plain HTTP only to local hosts (`NSAllowsLocalNetworking`).
 
 ## Build
@@ -37,5 +37,7 @@ xcodegen generate && xcodebuild -scheme Spark -destination 'platform=macOS' buil
 - `Spark/Providers`: `LLMProvider` protocol, `OpenAICompatibleProvider` (SSE client; Ollama uses it via `Ollama.swift`),
   `MockProvider` (Anthropic/Bifrost/9router until real clients land; see TODOs), `ProviderRegistry` (live model lists)
 - `Spark/Models`: `ChatMessage`
-- `Spark/Settings`: Settings window
+- `Spark/Settings`: Settings window (General tab, Appearance tab with the `ThemePicker` grid)
+- `Spark/Theme`: `Theme` (palette, `\.theme` environment, `Glass.themed`, `themeStyle`) and `ThemeCatalog` (built-in palettes).
+  No theme (`Theme.systemID`) is the default Liquid Glass look; themed views must look right both ways.
 - `Spark/Resources`: assets; `Info.plist` and entitlements are generated from `project.yml`
