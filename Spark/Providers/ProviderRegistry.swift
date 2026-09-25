@@ -5,13 +5,9 @@ import Observation
 @MainActor
 @Observable
 final class ProviderRegistry {
-    /// Built-in providers, then Anthropic and Bedrock once they have credentials, then the user's custom ones.
-    /// Placeholders come last so a real provider supplies the default model.
+    /// Ollama, then Anthropic and Bedrock once they have credentials, then the Bifrost and 9router gateways
+    /// once they're turned on, then the user's custom providers.
     var providers: [any LLMProvider] {
-        let custom = customProviders.providers
-        // An imported 9router config supersedes its placeholder.
-        let hasNineRouter = customProviders.configs.contains { $0.source == .nineRouter }
-        let builtIn = builtInProviders.filter { !(hasNineRouter && $0.id == "9router") }
         var hosted: [any LLMProvider] = []
         if anthropicKey.hasValue {
             hosted.append(AnthropicProvider(apiKey: anthropicKey.value))
@@ -19,7 +15,8 @@ final class ProviderRegistry {
         if let bedrock = bedrock.provider {
             hosted.append(bedrock)
         }
-        return builtIn.filter { !($0 is MockProvider) } + hosted + custom + builtIn.filter { $0 is MockProvider }
+        let gateways = [bifrost, nineRouter].compactMap(\.provider)
+        return builtInProviders + hosted + gateways + customProviders.providers
     }
 
     private let builtInProviders: [any LLMProvider]
@@ -28,6 +25,10 @@ final class ProviderRegistry {
     let anthropicKey: KeychainSecret
     /// Bedrock's region and credentials; Bedrock is offered only once they're filled in.
     let bedrock: BedrockSettings
+    /// The Bifrost gateway; offered only while it's turned on in Settings.
+    let bifrost: GatewaySettings
+    /// The 9router gateway; offered only while it's turned on in Settings.
+    let nineRouter: GatewaySettings
 
     /// Models by provider ID, from the last refresh.
     private(set) var models: [String: [String]] = [:]
@@ -35,14 +36,18 @@ final class ProviderRegistry {
     private(set) var errors: [String: String] = [:]
     private(set) var isRefreshing = false
 
-    init(providers: [any LLMProvider] = ProviderRegistry.standardProviders,
+    init(providers: [any LLMProvider] = [Ollama.provider()],
          customProviders: CustomProviders = CustomProviders(),
          anthropicKey: KeychainSecret = KeychainSecret(account: AnthropicProvider.keychainAccount),
-         bedrock: BedrockSettings = BedrockSettings()) {
+         bedrock: BedrockSettings = BedrockSettings(),
+         bifrost: GatewaySettings = GatewaySettings(kind: .bifrost),
+         nineRouter: GatewaySettings = GatewaySettings(kind: .nineRouter)) {
         self.builtInProviders = providers
         self.customProviders = customProviders
         self.anthropicKey = anthropicKey
         self.bedrock = bedrock
+        self.bifrost = bifrost
+        self.nineRouter = nineRouter
     }
 
     /// Providers whose last refresh failed (e.g. Ollama isn't running).
@@ -105,15 +110,5 @@ final class ProviderRegistry {
                 }
             }
         }
-    }
-
-    nonisolated static var standardProviders: [any LLMProvider] {
-        [
-            Ollama.provider(),
-            // TODO: Replace with an OpenAICompatibleProvider pointed at the Bifrost gateway.
-            MockProvider(id: "bifrost", displayName: "Bifrost", models: ["gpt-4o"]),
-            // TODO: Replace with an OpenAICompatibleProvider pointed at 9router.
-            MockProvider(id: "9router", displayName: "9router", models: ["auto"]),
-        ]
     }
 }

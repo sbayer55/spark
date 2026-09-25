@@ -2,17 +2,22 @@ import Foundation
 import Observation
 
 /// One chat: its transcript, draft, model, and in-flight reply. `ChatStore` holds every open chat.
+/// Every change to the transcript is saved to `ChatArchive`, so a chat can be reopened from history or after a relaunch.
 @MainActor
 @Observable
 final class ChatViewModel: Identifiable {
-    let id = UUID()
+    let id: UUID
+    let createdAt: Date
     let registry: ProviderRegistry
     let braveKey: BraveSearchKey
+    let archive: ChatArchive
 
     var messages: [ChatMessage] = []
     var draft = ""
     /// How the next message is answered. Sticky per chat; every new chat starts in Ask.
-    var mode = ChatMode.ask
+    var mode = ChatMode.ask {
+        didSet { if mode != oldValue { persist() } }
+    }
     private(set) var selection: ModelSelection?
     /// The model this chat prefers (picked here, or inherited when it was created); restored whenever it's available.
     private(set) var preferredSelection: ModelSelection?
@@ -63,17 +68,48 @@ final class ChatViewModel: Identifiable {
         return first.map(String.init) ?? "New Chat"
     }
 
-    init(registry: ProviderRegistry, braveKey: BraveSearchKey, preferredSelection: ModelSelection?) {
+    init(registry: ProviderRegistry, braveKey: BraveSearchKey, archive: ChatArchive,
+         preferredSelection: ModelSelection?) {
+        id = UUID()
+        createdAt = .now
         self.registry = registry
         self.braveKey = braveKey
+        self.archive = archive
         self.preferredSelection = preferredSelection
         self.selection = preferredSelection
+    }
+
+    /// Reopens a saved chat. Its model is restored once `reconcileSelection` finds it available.
+    init(record: ChatRecord, registry: ProviderRegistry, braveKey: BraveSearchKey, archive: ChatArchive) {
+        id = record.id
+        createdAt = record.createdAt
+        self.registry = registry
+        self.braveKey = braveKey
+        self.archive = archive
+        messages = record.messages.map(\.settled)
+        mode = record.mode
+        preferredSelection = record.selection
+        selection = record.selection
+    }
+
+    /// The chat as saved to history. A reply still streaming is left out while it's empty, else recorded as stopped.
+    var record: ChatRecord {
+        ChatRecord(id: id, title: title, createdAt: createdAt, updatedAt: .now, mode: mode,
+                   selection: selection ?? preferredSelection,
+                   messages: messages.compactMap { $0.status == .streaming && $0.content.isEmpty ? nil : $0.settled })
+    }
+
+    /// Saves the chat to history, once it has any messages.
+    private func persist() {
+        guard !messages.isEmpty else { return }
+        archive.save(record)
     }
 
     func select(_ selection: ModelSelection) {
         self.selection = selection
         preferredSelection = selection
         ModelPreference.stored = selection
+        persist()
     }
 
     /// Restores the preferred model if it's available, else falls back to a default when the current one isn't.
@@ -94,6 +130,7 @@ final class ChatViewModel: Identifiable {
         draft = ""
         messages.append(ChatMessage(role: .user, content: text))
         let history = messages
+        persist()
 
         let research = effectiveMode == .research
         let reply = ChatMessage(role: .assistant, content: "", status: .streaming,
@@ -178,6 +215,7 @@ final class ChatViewModel: Identifiable {
         if !isActive && status != .cancelled {
             hasUnreadReply = true
         }
+        persist()
     }
 }
 
