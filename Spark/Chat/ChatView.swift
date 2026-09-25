@@ -10,12 +10,14 @@ struct ChatView: View {
 
     @State private var listContentHeight: CGFloat = 0
     @AppStorage(TextSize.key) private var textScale = TextSize.defaultScale
+    @AppStorage(Theme.key) private var themeID = Theme.systemID
 
     var body: some View {
         // Content-sized until the user resizes vertically; then the message list fills the panel.
         let fillsHeight = layout.isHeightFixed
         let chat = store.active
         let isSwitching = store.isSwitcherOpen
+        let theme = Theme.named(themeID)
 
         // A ZStack so the panel grows to fit the switcher when it's taller than the chat.
         ZStack(alignment: .top) {
@@ -24,14 +26,14 @@ struct ChatView: View {
                     if !chat.messages.isEmpty {
                         messageList(for: chat, fillsHeight: fillsHeight)
                             .id(chat.id)
-                            .glassEffect(.regular, in: .rect(cornerRadius: 22, style: .continuous))
+                            .glassEffect(.themed(theme), in: .rect(cornerRadius: 22, style: .continuous))
                             .transition(.opacity)
                     } else if fillsHeight {
                         // No empty glass for a new chat; keep the composer at the bottom of the fixed-height panel.
                         Spacer(minLength: 0)
                     }
                     ChatInput(store: store, chat: chat)
-                        .glassEffect(.regular, in: .rect(cornerRadius: 22, style: .continuous))
+                        .glassEffect(.themed(theme), in: .rect(cornerRadius: 22, style: .continuous))
                 }
             }
             .blur(radius: isSwitching ? 3 : 0)
@@ -50,6 +52,8 @@ struct ChatView: View {
             }
         }
         .environment(\.textScale, textScale)
+        .environment(\.theme, theme)
+        .themeStyle(theme)
         // Writing Tools is off app-wide; there's no global switch, so each window root opts out.
         .writingToolsBehavior(.disabled)
         .padding(PanelMetrics.inset)
