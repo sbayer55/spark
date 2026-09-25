@@ -2,7 +2,7 @@ name: Spark
 
 options:
   # TODO: Change to your own reverse-DNS prefix (also update PRODUCT_BUNDLE_IDENTIFIER below).
-  bundleIdPrefix: com.yourname
+  bundleIdPrefix: com.tesseraga
   deploymentTarget:
     macOS: "26.0"
   createIntermediateGroups: true
