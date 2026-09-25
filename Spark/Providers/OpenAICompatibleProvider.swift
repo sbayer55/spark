@@ -1,8 +1,8 @@
 import Foundation
 
 /// Streams chat completions from any server implementing the OpenAI Chat Completions API
-/// (`GET /models`, `POST /chat/completions` with SSE streaming). Used for Ollama; Bifrost
-/// and 9router can reuse it with their own base URL and API key.
+/// (`GET /models`, `POST /chat/completions` with SSE streaming). Used for Ollama and for
+/// custom providers imported from other tools (see `CustomProviders`).
 struct OpenAICompatibleProvider: LLMProvider {
     let id: String
     let displayName: String
@@ -10,9 +10,13 @@ struct OpenAICompatibleProvider: LLMProvider {
     let baseURL: @Sendable () -> URL
     /// Optional bearer token. Resolved per request.
     var apiKey: @Sendable () -> String? = { nil }
+    /// Models declared up front (e.g. by an imported config). When non-empty, these are offered
+    /// as-is instead of asking the server, since many gateways don't implement `GET /models`.
+    var configuredModels: [String] = []
     var session: URLSession = .shared
 
     func availableModels() async throws -> [String] {
+        if !configuredModels.isEmpty { return configuredModels }
         let request = makeRequest(path: "models", method: "GET", timeout: 5)
         do {
             let (data, response) = try await session.data(for: request)

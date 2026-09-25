@@ -2,7 +2,7 @@ import KeyboardShortcuts
 import SwiftUI
 
 struct SettingsView: View {
-    @Bindable var braveKey: BraveSearchKey
+    let store: ChatStore
     @AppStorage(Ollama.baseURLKey) private var ollamaURL = Ollama.defaultBaseURL
     @AppStorage(ChatRetention.key) private var retentionMinutes = ChatRetention.defaultMinutes
 
@@ -26,7 +26,9 @@ struct SettingsView: View {
                     .textContentType(.URL)
                     .autocorrectionDisabled()
             }
+            CustomProvidersSection(store: store)
             Section {
+                @Bindable var braveKey = store.braveKey
                 SecureField("Brave Search API key", text: $braveKey.key)
                     .textContentType(.password)
                     .autocorrectionDisabled()

@@ -25,6 +25,9 @@ packages:
   SwiftSoup:
     url: https://github.com/scinfu/SwiftSoup
     from: "2.13.0"
+  Yams:
+    url: https://github.com/jpsim/Yams
+    from: "6.0.0"
 
 targets:
   Spark:
@@ -37,6 +40,7 @@ targets:
       - package: Markdown
         product: Markdown
       - package: SwiftSoup
+      - package: Yams
     info:
       path: Spark/Resources/Info.plist
       properties:
@@ -54,6 +58,8 @@ targets:
       properties:
         com.apple.security.app-sandbox: true
         com.apple.security.network.client: true
+        # Importing provider configs (opencode, DeepSeek Harness, 9router) from files the user picks.
+        com.apple.security.files.user-selected.read-only: true
     settings:
       base:
         # TODO: Change to your own bundle identifier.
